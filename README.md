@@ -37,6 +37,24 @@ This project acts as a template engine. It allows you to select an artistic effe
 28. **Color Isolation**: Turns the image grayscale except for one specific hue.
 29. **Luma Keying**: Makes pixels transparent if they are too bright/dark.
 30. **False Color**: Swaps RGB channels (e.g., Red becomes Blue).
+31. **Contrast Stretch**: Expands the range of brightness values to cover the full spectrum.
+32. **Vignette Blur**: Blurs and darkens the edges of the frame while keeping the center sharp.
+33. **Neon Glow**: Detects bright areas and adds a blurred bloom effect around them.
+34. **CMYK Separation**: Simulates misaligned cyan, magenta, yellow, and black printing plates.
+35. **Mirror Symmetry**: Splits the screen vertically/horizontally and reflects one side.
+36. **Fish-Eye Lens**: Bulges the center of the image outward.
+37. **Pinch Distortion**: Sucks pixels toward a specific point (mouse position).
+38. **Swirl**: Rotates pixels around the center, with more rotation at the core.
+39. **Sine Wave Ripple**: Displaces pixels horizontally based on a sine wave function.
+40. **Pixel Sort**: Sorts pixels in a row/column by brightness.
+41. **Slit-Scan (Spatial)**: Stretches the center vertical line of pixels to the edges.
+42. **Broken Glass**: Voronoi cells that displace the image inside them slightly.
+43. **Scanline Displacement**: Shifts every other horizontal line left or right.
+44. **Polar Coordinates**: Maps the Cartesian (x,y) image into a circle.
+45. **Droste Effect**: Recursively places the video frame inside itself.
+46. **Tile Scramble**: Breaks image into a grid and randomly swaps tile positions.
+47. **Barrel Distortion**: Squeezes the edges of the image inward.
+48. **Liquid Displacement**: Uses Perlin noise to warp pixel coordinates smoothly.
 
 
 ## How to Use

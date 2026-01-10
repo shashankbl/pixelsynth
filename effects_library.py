@@ -1143,5 +1143,705 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "31": {
+        "name": "Contrast Stretch",
+        "description": "Expands the range of brightness values to cover the full spectrum. (Ref: Histogram Equalization)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls contrast factor (1.0 to 5.0)
+  let contrast = map(paramA, 0, 1, 1, 5);
+  let intercept = 128 * (1 - contrast);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i+1];
+    let b = video.pixels[i+2];
+    
+    pixels[i] = constrain(r * contrast + intercept, 0, 255);
+    pixels[i+1] = constrain(g * contrast + intercept, 0, 255);
+    pixels[i+2] = constrain(b * contrast + intercept, 0, 255);
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "32": {
+        "name": "Vignette Blur",
+        "description": "Blurs and darkens the edges of the frame while keeping the center sharp. (Ref: Portraiture)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  
+  // 1. Draw Blurred Base
+  // paramA controls blur amount
+  let blurAmt = map(paramA, 0, 1, 0, 20);
+  push();
+  drawingContext.filter = `blur(${blurAmt}px)`;
+  image(video, 0, 0);
+  pop();
+  
+  // 2. Draw Sharp Center (Clipped)
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.arc(width/2, height/2, height/2.5, 0, TWO_PI);
+  drawingContext.clip();
+  image(video, 0, 0);
+  drawingContext.restore();
+  
+  // 3. Vignette Overlay (Dark edges)
+  let grad = drawingContext.createRadialGradient(width/2, height/2, height/3, width/2, height/2, height);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.8)');
+  drawingContext.fillStyle = grad;
+  rect(0, 0, width, height);
+"""
+    },
+    "33": {
+        "name": "Neon Glow",
+        "description": "Detects bright areas and adds a blurred bloom effect around them. (Ref: Cyberpunk)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  
+  // 1. Draw base video (dimmed)
+  tint(100);
+  image(video, 0, 0);
+  noTint();
+  
+  // 2. Draw Bloom
+  // paramA controls bloom intensity via threshold/contrast
+  push();
+  blendMode(SCREEN);
+  let blurAmt = 20;
+  // High contrast filter helps isolate brights
+  drawingContext.filter = `blur(${blurAmt}px) brightness(200%) contrast(150%)`;
+  image(video, 0, 0);
+  pop();
+  
+  blendMode(BLEND);
+"""
+    },
+    "34": {
+        "name": "CMYK Separation",
+        "description": "Simulates misaligned cyan, magenta, yellow, and black printing plates. (Ref: Risograph)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  noStroke();
+  blendMode(MULTIPLY);
+  
+  // paramA controls offset
+  let offset = map(paramA, 0, 1, 0, 20);
+  let step = 8; // Grid step for performance
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      
+      // CMY approximation (Subtractive)
+      let c = 255 - r;
+      let m = 255 - g;
+      let yel = 255 - b;
+      
+      // Cyan (Red channel blocked)
+      if (c > 50) {
+        fill(0, 255, 255, c); 
+        ellipse(x - offset, y - offset, step, step);
+      }
+      
+      // Magenta (Green channel blocked)
+      if (m > 50) {
+        fill(255, 0, 255, m);
+        ellipse(x + offset, y - offset, step, step);
+      }
+      
+      // Yellow (Blue channel blocked)
+      if (yel > 50) {
+        fill(255, 255, 0, yel);
+        ellipse(x, y + offset, step, step);
+      }
+    }
+  }
+  blendMode(BLEND);
+"""
+    },
+    "35": {
+        "name": "Mirror Symmetry",
+        "description": "Splits the screen vertically/horizontally and reflects one side. (Ref: Rorschach Test)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls mode: <0.5 Vertical Mirror, >0.5 Quad Mirror
+  let quad = paramA > 0.5;
+  let hw = width / 2;
+  let hh = height / 2;
+  
+  if (!quad) {
+    // Vertical Mirror (Left side reflected to Right)
+    // Draw Left
+    image(video, 0, 0, hw, height, 0, 0, hw, height);
+    
+    // Draw Right (Mirrored)
+    push();
+    translate(width, 0);
+    scale(-1, 1);
+    image(video, 0, 0, hw, height, 0, 0, hw, height);
+    pop();
+  } else {
+    // Quad Mirror (Top-Left reflected to all quadrants)
+    // TL
+    image(video, 0, 0, hw, hh, 0, 0, hw, hh);
+    
+    // TR
+    push();
+    translate(width, 0);
+    scale(-1, 1);
+    image(video, 0, 0, hw, hh, 0, 0, hw, hh);
+    pop();
+    
+    // BL
+    push();
+    translate(0, height);
+    scale(1, -1);
+    image(video, 0, 0, hw, hh, 0, 0, hw, hh);
+    pop();
+    
+    // BR
+    push();
+    translate(width, height);
+    scale(-1, -1);
+    image(video, 0, 0, hw, hh, 0, 0, hw, hh);
+    pop();
+  }
+"""
+    },
+    "36": {
+        "name": "Fish-Eye Lens",
+        "description": "Bulges the center of the image outward. (Ref: Action Cameras)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  // paramA controls distortion strength
+  let k = map(paramA, 0, 1, 0.0, 0.00005);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let r2 = dx*dx + dy*dy;
+      
+      // Barrel distortion mapping
+      let f = 1 + k * r2;
+      let sx = floor(cx + dx * f);
+      let sy = floor(cy + dy * f);
+      
+      if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
+        let destIdx = (x + y * width) * 4;
+        let srcIdx = (sx + sy * width) * 4;
+        pixels[destIdx] = video.pixels[srcIdx];
+        pixels[destIdx+1] = video.pixels[srcIdx+1];
+        pixels[destIdx+2] = video.pixels[srcIdx+2];
+        pixels[destIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "37": {
+        "name": "Pinch Distortion",
+        "description": "Sucks pixels toward a specific point (mouse position). (Ref: Black Hole)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // Center of pinch is mouse position (paramA, paramB)
+  let cx = paramA * width;
+  let cy = paramB * height;
+  let radius = 200;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let dist = sqrt(dx*dx + dy*dy);
+      
+      let sx = x;
+      let sy = y;
+      
+      if (dist < radius) {
+        // Non-linear pinch
+        let amount = 1 - sin((dist / radius) * HALF_PI);
+        let distortion = amount * 0.5; // Strength
+        sx = cx + dx / (1 - distortion);
+        sy = cy + dy / (1 - distortion);
+      }
+      
+      sx = floor(sx);
+      sy = floor(sy);
+      
+      if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
+        let destIdx = (x + y * width) * 4;
+        let srcIdx = (sx + sy * width) * 4;
+        pixels[destIdx] = video.pixels[srcIdx];
+        pixels[destIdx+1] = video.pixels[srcIdx+1];
+        pixels[destIdx+2] = video.pixels[srcIdx+2];
+        pixels[destIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "38": {
+        "name": "Swirl",
+        "description": "Rotates pixels around the center, with more rotation at the core. (Ref: Latte Art)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  // paramA controls twist amount
+  let maxAngle = map(paramA, 0, 1, 0, TWO_PI * 2);
+  let radius = min(width, height) / 1.5;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let dist = sqrt(dx*dx + dy*dy);
+      
+      let sx = x;
+      let sy = y;
+      
+      if (dist < radius) {
+        let percent = (radius - dist) / radius;
+        let theta = percent * percent * maxAngle;
+        
+        // Rotate coordinate system
+        let s_dx = dx * cos(theta) - dy * sin(theta);
+        let s_dy = dx * sin(theta) + dy * cos(theta);
+        sx = cx + s_dx;
+        sy = cy + s_dy;
+      }
+      
+      sx = floor(sx);
+      sy = floor(sy);
+      
+      if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
+        let destIdx = (x + y * width) * 4;
+        let srcIdx = (sx + sy * width) * 4;
+        pixels[destIdx] = video.pixels[srcIdx];
+        pixels[destIdx+1] = video.pixels[srcIdx+1];
+        pixels[destIdx+2] = video.pixels[srcIdx+2];
+        pixels[destIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "39": {
+        "name": "Sine Wave Ripple",
+        "description": "Displaces pixels horizontally based on a sine wave function. (Ref: Underwater)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls frequency
+  let freq = map(paramA, 0, 1, 0.02, 0.2);
+  // paramB controls amplitude
+  let amp = map(paramB, 0, 1, 0, 100);
+  let time = frameCount * 0.1;
+  
+  for (let y = 0; y < height; y++) {
+    // Calculate horizontal offset
+    let offset = sin(y * freq + time) * amp;
+    
+    for (let x = 0; x < width; x++) {
+      let srcX = floor(x + offset);
+      srcX = constrain(srcX, 0, width - 1);
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (srcX + y * width) * 4;
+      
+      pixels[destIdx] = video.pixels[srcIdx];
+      pixels[destIdx+1] = video.pixels[srcIdx+1];
+      pixels[destIdx+2] = video.pixels[srcIdx+2];
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "40": {
+        "name": "Pixel Sort",
+        "description": "Sorts pixels in a row/column by brightness. (Ref: Glitch Art)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // Sort every row based on brightness
+  // paramA controls sort direction (Left-to-Right or Right-to-Left)
+  let asc = paramA > 0.5;
+  
+  for (let y = 0; y < height; y++) {
+    // Extract row
+    let row = [];
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      let bright = (r + g + b) / 3;
+      row.push({r, g, b, bright});
+    }
+    
+    // Sort
+    if (asc) row.sort((a, b) => a.bright - b.bright);
+    else row.sort((a, b) => b.bright - a.bright);
+    
+    // Put back
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      pixels[idx] = row[x].r;
+      pixels[idx+1] = row[x].g;
+      pixels[idx+2] = row[x].b;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "41": {
+        "name": "Slit-Scan (Spatial)",
+        "description": "Stretches the center vertical line of pixels to the edges. (Ref: 2001: A Space Odyssey)",
+        "global_vars": "let slitHistory = [];",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  
+  // Get center column
+  let centerX = floor(width / 2);
+  let col = [];
+  for (let y = 0; y < height; y++) {
+    let idx = (centerX + y * width) * 4;
+    col.push([video.pixels[idx], video.pixels[idx+1], video.pixels[idx+2]]);
+  }
+  
+  // Add to history (Newest at index 0)
+  slitHistory.unshift(col);
+  if (slitHistory.length > width / 2) slitHistory.pop();
+  
+  loadPixels();
+  
+  // Draw history radiating outwards
+  for (let i = 0; i < slitHistory.length; i++) {
+    let c = slitHistory[i];
+    let leftX = centerX - i;
+    let rightX = centerX + i;
+    
+    for (let y = 0; y < height; y++) {
+      let color = c[y];
+      if (leftX >= 0) {
+        let idx = (leftX + y * width) * 4;
+        pixels[idx] = color[0]; pixels[idx+1] = color[1]; pixels[idx+2] = color[2]; pixels[idx+3] = 255;
+      }
+      if (rightX < width) {
+        let idx = (rightX + y * width) * 4;
+        pixels[idx] = color[0]; pixels[idx+1] = color[1]; pixels[idx+2] = color[2]; pixels[idx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "42": {
+        "name": "Broken Glass",
+        "description": "Voronoi cells that displace the image inside them slightly. (Ref: Shatter)",
+        "global_vars": "let glassSeeds = []; let glassMap = null;",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let numSeeds = floor(map(paramA, 0, 1, 10, 50));
+  
+  // Regenerate map if needed
+  if (glassSeeds.length !== numSeeds || !glassMap) {
+    glassSeeds = [];
+    for (let i = 0; i < numSeeds; i++) {
+      glassSeeds.push({ x: random(width), y: random(height), offsetX: random(-30, 30), offsetY: random(-30, 30) });
+    }
+    glassMap = new Int8Array(width * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let minDist = Infinity, idx = 0;
+        for (let i = 0; i < numSeeds; i++) {
+          let d = (x - glassSeeds[i].x)**2 + (y - glassSeeds[i].y)**2;
+          if (d < minDist) { minDist = d; idx = i; }
+        }
+        glassMap[x + y * width] = idx;
+      }
+    }
+  }
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let s = glassSeeds[glassMap[x + y * width]];
+      let sx = constrain(floor(x + s.offsetX), 0, width - 1);
+      let sy = constrain(floor(y + s.offsetY), 0, height - 1);
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (sx + sy * width) * 4;
+      
+      pixels[destIdx] = video.pixels[srcIdx];
+      pixels[destIdx+1] = video.pixels[srcIdx+1];
+      pixels[destIdx+2] = video.pixels[srcIdx+2];
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "43": {
+        "name": "Scanline Displacement",
+        "description": "Shifts every other horizontal line left or right. (Ref: Interlacing)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls shift amount
+  let shift = floor(map(paramA, 0, 1, 0, 50));
+  
+  for (let y = 0; y < height; y++) {
+    // Determine shift direction based on row parity
+    let xOffset = (y % 2 === 0) ? shift : -shift;
+    
+    for (let x = 0; x < width; x++) {
+      let srcX = x - xOffset;
+      
+      // Wrap around
+      if (srcX < 0) srcX += width;
+      if (srcX >= width) srcX -= width;
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (srcX + y * width) * 4;
+      
+      pixels[destIdx] = video.pixels[srcIdx];
+      pixels[destIdx+1] = video.pixels[srcIdx+1];
+      pixels[destIdx+2] = video.pixels[srcIdx+2];
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "44": {
+        "name": "Polar Coordinates",
+        "description": "Maps the Cartesian (x,y) image into a circle. (Ref: Tiny Planet)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  let maxRadius = dist(0, 0, cx, cy);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let angle = atan2(dy, dx); // -PI to PI
+      let r = sqrt(dx*dx + dy*dy);
+      
+      if (r < maxRadius) {
+        // Map angle to X, radius to Y
+        let srcX = map(angle, -PI, PI, 0, width);
+        // paramA controls zoom/radius mapping
+        let zoom = map(paramA, 0, 1, 0.5, 2.0);
+        let srcY = map(r, 0, maxRadius / zoom, 0, height);
+        
+        srcX = (srcX + width) % width;
+        srcY = constrain(srcY, 0, height - 1);
+        
+        let sx = floor(srcX);
+        let sy = floor(srcY);
+        
+        let destIdx = (x + y * width) * 4;
+        let srcIdx = (sx + sy * width) * 4;
+        
+        pixels[destIdx] = video.pixels[srcIdx];
+        pixels[destIdx+1] = video.pixels[srcIdx+1];
+        pixels[destIdx+2] = video.pixels[srcIdx+2];
+        pixels[destIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "45": {
+        "name": "Droste Effect",
+        "description": "Recursively places the video frame inside itself. (Ref: Picture-in-Picture)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls scale decay (0.5 to 0.9)
+  let scaleFactor = map(paramA, 0, 1, 0.5, 0.9);
+  let depth = 10;
+  
+  imageMode(CENTER);
+  translate(width / 2, height / 2);
+  
+  let w = width;
+  let h = height;
+  
+  // Draw from outside in
+  for (let i = 0; i < depth; i++) {
+    image(video, 0, 0, w, h);
+    w *= scaleFactor;
+    h *= scaleFactor;
+  }
+"""
+    },
+    "46": {
+        "name": "Tile Scramble",
+        "description": "Breaks image into a grid and randomly swaps tile positions. (Ref: Puzzle)",
+        "global_vars": "let tileIndices = [];",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls grid size (2 to 10)
+  let tiles = floor(map(paramA, 0, 1, 2, 10));
+  let tileW = width / tiles;
+  let tileH = height / tiles;
+  
+  // Initialize or reset permutation if grid size changes
+  if (tileIndices.length !== tiles * tiles) {
+    tileIndices = [];
+    for (let i = 0; i < tiles * tiles; i++) tileIndices.push(i);
+    // Shuffle
+    for (let i = tileIndices.length - 1; i > 0; i--) {
+      const j = floor(random(i + 1));
+      [tileIndices[i], tileIndices[j]] = [tileIndices[j], tileIndices[i]];
+    }
+  }
+  
+  for (let y = 0; y < tiles; y++) {
+    for (let x = 0; x < tiles; x++) {
+      let idx = tileIndices[x + y * tiles];
+      let sx = (idx % tiles) * tileW;
+      let sy = floor(idx / tiles) * tileH;
+      
+      // Use image() instead of copy() for better compatibility with video elements
+      // image(img, dx, dy, dWidth, dHeight, sx, sy, sWidth, sHeight)
+      image(video, x * tileW, y * tileH, tileW, tileH, sx, sy, tileW, tileH);
+    }
+  }
+"""
+    },
+    "47": {
+        "name": "Barrel Distortion",
+        "description": "Squeezes the edges of the image inward. (Ref: CRT TV)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  // paramA controls distortion strength
+  let k = map(paramA, 0, 1, 0.0, 0.0001);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let dx = x - cx;
+      let dy = y - cy;
+      let r2 = dx*dx + dy*dy;
+      
+      // Barrel distortion: pull pixels from further out
+      let f = 1 + k * r2;
+      let sx = floor(cx + dx * f);
+      let sy = floor(cy + dy * f);
+      
+      if (sx >= 0 && sx < width && sy >= 0 && sy < height) {
+        let destIdx = (x + y * width) * 4;
+        let srcIdx = (sx + sy * width) * 4;
+        pixels[destIdx] = video.pixels[srcIdx];
+        pixels[destIdx+1] = video.pixels[srcIdx+1];
+        pixels[destIdx+2] = video.pixels[srcIdx+2];
+        pixels[destIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "48": {
+        "name": "Liquid Displacement",
+        "description": "Uses Perlin noise to warp pixel coordinates smoothly. (Ref: Oil on Water)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls noise scale
+  let scale = map(paramA, 0, 1, 0.002, 0.01);
+  // paramB controls displacement magnitude
+  let mag = map(paramB, 0, 1, 0, 100);
+  let time = frameCount * 0.01;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let angle = noise(x * scale, y * scale, time) * TWO_PI * 2;
+      let sx = floor(x + cos(angle) * mag);
+      let sy = floor(y + sin(angle) * mag);
+      
+      sx = constrain(sx, 0, width - 1);
+      sy = constrain(sy, 0, height - 1);
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (sx + sy * width) * 4;
+      
+      pixels[destIdx] = video.pixels[srcIdx];
+      pixels[destIdx+1] = video.pixels[srcIdx+1];
+      pixels[destIdx+2] = video.pixels[srcIdx+2];
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
     }
 }
