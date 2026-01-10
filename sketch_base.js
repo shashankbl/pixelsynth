@@ -20,7 +20,7 @@ function setup() {
   // UI Controls
   let btnSave = createButton('Save');
   btnSave.position(10, 10);
-  btnSave.mousePressed(() => saveCanvas('pyprism_output', 'png'));
+  btnSave.mousePressed(() => saveCanvas('pixelsynth_output', 'png'));
 
   let btnHelp = createButton('Help');
   btnHelp.position(60, 10);

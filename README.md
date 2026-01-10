@@ -55,6 +55,18 @@ This project acts as a template engine. It allows you to select an artistic effe
 46. **Tile Scramble**: Breaks image into a grid and randomly swaps tile positions.
 47. **Barrel Distortion**: Squeezes the edges of the image inward.
 48. **Liquid Displacement**: Uses Perlin noise to warp pixel coordinates smoothly.
+49. **Motion Blur**: Blends the current frame with the previous 5 frames with opacity.
+50. **Ghosting / Trails**: Only updates the background slowly, leaving trails of moving objects.
+51. **Slit-Scan (Temporal)**: Each column of pixels comes from a different point in time.
+52. **Frame Delay Grid**: A grid of videos, each delayed by 1 second more than the last.
+53. **Motion Detection**: Subtracts the previous frame from the current one to show only movement.
+54. **RGB Delay**: Shows Red channel instantly, Green with 5-frame delay, Blue with 10-frame delay.
+55. **Video Feedback**: Draws the previous frame slightly zoomed in and rotated.
+56. **Pixel Accumulation**: Pixels "pile up" at the bottom if they are dark (physics simulation).
+57. **Freeze Frame Mask**: Freezes parts of the screen that haven't moved in X seconds.
+58. **Time Displacement Map**: Uses a grayscale map to determine which "time" (past frame) to sample from.
+59. **Optical Flow Particles**: Particles flow in the direction of movement detected in the video.
+60. **Frame Averaging**: Averages the last 100 frames to remove moving objects entirely.
 
 
 ## How to Use

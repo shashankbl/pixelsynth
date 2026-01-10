@@ -56,7 +56,7 @@ def start_server():
 
 def main():
     print("========================================")
-    print("   PyPrism / Darpan - Sketch Generator  ")
+    print("   PixelSynth - Sketch Generator  ")
     print("========================================")
     
     # 1. Menu Selection
@@ -64,7 +64,7 @@ def main():
     for key, effect in EFFECTS.items():
         print(f"[{key}] {effect['name']} - {effect['description']}")
     
-    choice = input("\nEnter choice (1-48): ").strip()
+    choice = input("\nEnter choice (1-60): ").strip()
     
     if choice not in EFFECTS:
         print("Invalid selection. Exiting.")

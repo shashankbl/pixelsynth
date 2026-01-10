@@ -1843,5 +1843,498 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "49": {
+        "name": "Motion Blur",
+        "description": "Blends the current frame with the previous 5 frames with opacity. (Ref: Long Exposure)",
+        "global_vars": "let mbHistory = [];",
+        "draw_loop": """
+  background(0);
+  
+  // Store current frame
+  mbHistory.push(video.get());
+  
+  // paramA controls trail length (2 to 20)
+  let maxHist = floor(map(paramA, 0, 1, 2, 20));
+  
+  if (mbHistory.length > maxHist) mbHistory.shift();
+  
+  // Draw all frames in history with low opacity
+  for (let i = 0; i < mbHistory.length; i++) {
+    tint(255, 255 / mbHistory.length);
+    image(mbHistory[i], 0, 0);
+  }
+  noTint();
+"""
+    },
+    "50": {
+        "name": "Ghosting / Trails",
+        "description": "Only updates the background slowly, leaving trails of moving objects. (Ref: Echo)",
+        "global_vars": "",
+        "draw_loop": """
+  // No background() call to preserve previous frames
+  
+  // paramA controls fade speed (alpha of black overlay)
+  // Lower alpha = longer trails
+  let fade = map(paramA, 0, 1, 5, 50);
+  
+  noStroke();
+  fill(0, fade);
+  rect(0, 0, width, height);
+  
+  // Draw current video with transparency to blend with history
+  tint(255, 150);
+  image(video, 0, 0);
+  noTint();
+"""
+    },
+    "51": {
+        "name": "Slit-Scan (Temporal)",
+        "description": "Each column of pixels comes from a different point in time. (Ref: Time Warp Scan)",
+        "global_vars": "let tScanY = 0; let tFrozen;",
+        "draw_loop": """
+  if (!tFrozen || tFrozen.width !== width || tFrozen.height !== height) {
+    tFrozen = createGraphics(width, height);
+    tFrozen.clear();
+  }
+  
+  // Draw live video background (bottom part)
+  image(video, 0, 0);
+  
+  // paramA controls scan speed
+  let speed = floor(map(paramA, 0, 1, 1, 10));
+  
+  // Copy strip from video to frozen buffer
+  tFrozen.copy(video, 0, tScanY, width, speed, 0, tScanY, width, speed);
+  
+  // Draw frozen part on top
+  image(tFrozen, 0, 0);
+  
+  // Draw scanline indicator
+  stroke(0, 255, 0);
+  strokeWeight(2);
+  line(0, tScanY + speed, width, tScanY + speed);
+  
+  tScanY += speed;
+  if (tScanY >= height) {
+    tScanY = 0;
+    tFrozen.clear();
+  }
+"""
+    },
+    "52": {
+        "name": "Frame Delay Grid",
+        "description": "A grid of videos, each delayed by 1 second more than the last. (Ref: CCTV Wall)",
+        "global_vars": "let fdBuffer = [];",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls grid size (2 to 5)
+  let grid = floor(map(paramA, 0, 1, 2, 5));
+  let cellW = width / grid;
+  let cellH = height / grid;
+  
+  let delayStep = 15; // Frames delay per cell
+  let maxBuffer = (grid * grid) * delayStep;
+  
+  fdBuffer.push(video.get());
+  if (fdBuffer.length > maxBuffer) fdBuffer.shift();
+  
+  for (let y = 0; y < grid; y++) {
+    for (let x = 0; x < grid; x++) {
+      let cellIdx = x + y * grid;
+      // Calculate frame index: Cell 0 is newest, Cell N is oldest
+      let frameIdx = fdBuffer.length - 1 - (cellIdx * delayStep);
+      
+      if (frameIdx >= 0) {
+        image(fdBuffer[frameIdx], x * cellW, y * cellH, cellW, cellH);
+      }
+    }
+  }
+"""
+    },
+    "53": {
+        "name": "Motion Detection",
+        "description": "Subtracts the previous frame from the current one to show only movement. (Ref: Security Cam)",
+        "global_vars": "let prevFrame;",
+        "draw_loop": """
+  if (!prevFrame || prevFrame.width !== width) {
+    prevFrame = createGraphics(width, height);
+    prevFrame.pixelDensity(1);
+  }
+  
+  video.loadPixels();
+  prevFrame.loadPixels();
+  loadPixels();
+  
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 10, 100);
+  
+  if (video.pixels.length > 0 && prevFrame.pixels.length === video.pixels.length) {
+    for (let i = 0; i < video.pixels.length; i += 4) {
+      let r = video.pixels[i];
+      let g = video.pixels[i+1];
+      let b = video.pixels[i+2];
+      
+      let pr = prevFrame.pixels[i];
+      let pg = prevFrame.pixels[i+1];
+      let pb = prevFrame.pixels[i+2];
+      
+      let diff = abs(r - pr) + abs(g - pg) + abs(b - pb);
+      
+      if (diff > thresh) {
+        pixels[i] = 255; pixels[i+1] = 255; pixels[i+2] = 255;
+      } else {
+        pixels[i] = 0; pixels[i+1] = 0; pixels[i+2] = 0;
+      }
+      pixels[i+3] = 255;
+    }
+    updatePixels();
+  }
+  
+  // Save current frame
+  prevFrame.image(video, 0, 0, width, height);
+"""
+    },
+    "54": {
+        "name": "RGB Delay",
+        "description": "Shows Red channel instantly, Green with 5-frame delay, Blue with 10-frame delay. (Ref: Chromatic Aberration)",
+        "global_vars": "let rgbBuffer = [];",
+        "draw_loop": """
+  background(0);
+  
+  // Store current frame
+  rgbBuffer.push(video.get());
+  if (rgbBuffer.length > 11) rgbBuffer.shift();
+  
+  if (rgbBuffer.length > 10) {
+    let current = rgbBuffer[rgbBuffer.length - 1];
+    let mid = rgbBuffer[rgbBuffer.length - 6];
+    let old = rgbBuffer[0];
+    
+    current.loadPixels();
+    mid.loadPixels();
+    old.loadPixels();
+    loadPixels();
+    
+    for (let i = 0; i < pixels.length; i+=4) {
+      pixels[i] = current.pixels[i];     // R (Instant)
+      pixels[i+1] = mid.pixels[i+1];     // G (Delayed)
+      pixels[i+2] = old.pixels[i+2];     // B (More Delayed)
+      pixels[i+3] = 255;
+    }
+    updatePixels();
+  } else {
+    image(video, 0, 0);
+  }
+"""
+    },
+    "55": {
+        "name": "Video Feedback",
+        "description": "Draws the previous frame slightly zoomed in and rotated. (Ref: Infinity Mirror)",
+        "global_vars": "",
+        "draw_loop": """
+  // Capture the canvas before clearing
+  let prev = get();
+  
+  background(0);
+  
+  push();
+  imageMode(CENTER);
+  translate(width/2, height/2);
+  
+  // paramA controls zoom (1.0 to 1.2)
+  let zoom = map(paramA, 0, 1, 1.0, 1.2);
+  // paramB controls rotation
+  let rot = map(paramB, 0, 1, -0.1, 0.1);
+  
+  scale(zoom);
+  rotate(rot);
+  
+  // Draw previous frame with slight transparency to create decay
+  tint(255, 240);
+  image(prev, 0, 0);
+  pop();
+  
+  // Draw new video frame on top with blend
+  blendMode(SCREEN);
+  tint(255, 150);
+  image(video, 0, 0);
+  blendMode(BLEND);
+"""
+    },
+    "56": {
+        "name": "Pixel Accumulation",
+        "description": "Pixels 'pile up' at the bottom if they are dark (physics simulation). (Ref: Sand Art)",
+        "global_vars": "let sandPg; let sandPile = []; let activeSand = [];",
+        "draw_loop": """
+  if (!sandPg || sandPg.width !== width) {
+    sandPg = createGraphics(width, height);
+    sandPg.clear();
+    sandPile = new Array(width).fill(height);
+  }
+  
+  background(0);
+  
+  // Spawn sand from dark pixels
+  video.loadPixels();
+  let spawnRate = 50;
+  for(let i=0; i<spawnRate; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    let idx = (x + y * width) * 4;
+    let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2])/3;
+    
+    // paramA controls brightness threshold
+    let thresh = map(paramA, 0, 1, 50, 150);
+    
+    if (b < thresh) {
+      activeSand.push({
+        x: x, 
+        y: y, 
+        c: [video.pixels[idx], video.pixels[idx+1], video.pixels[idx+2]]
+      });
+    }
+  }
+  
+  // Update physics
+  for (let i = activeSand.length - 1; i >= 0; i--) {
+    let s = activeSand[i];
+    s.y += 5; // Gravity
+    
+    let floorY = sandPile[s.x];
+    if (s.y >= floorY) {
+      s.y = floorY;
+      sandPile[s.x] -= 2; // Pile grows
+      
+      // Draw to persistent buffer
+      sandPg.noStroke();
+      sandPg.fill(s.c[0], s.c[1], s.c[2]);
+      sandPg.rect(s.x, s.y, 2, 2);
+      
+      activeSand.splice(i, 1);
+    }
+  }
+  
+  // Draw buffer and active sand
+  image(sandPg, 0, 0);
+  
+  noStroke();
+  for (let s of activeSand) {
+    fill(s.c[0], s.c[1], s.c[2]);
+    rect(s.x, s.y, 2, 2);
+  }
+"""
+    },
+    "57": {
+        "name": "Freeze Frame Mask",
+        "description": "Freezes parts of the screen that haven't moved in X seconds. (Ref: Photobooth)",
+        "global_vars": "let ffBuffer; let ffPrev;",
+        "draw_loop": """
+  if (!ffPrev || ffPrev.width !== width) {
+    ffPrev = createGraphics(width, height);
+    ffPrev.pixelDensity(1);
+    ffPrev.image(video, 0, 0, width, height);
+  }
+  
+  if (!ffBuffer || ffBuffer.width !== width) {
+    ffBuffer = createGraphics(width, height);
+    ffBuffer.pixelDensity(1);
+    ffBuffer.image(video, 0, 0, width, height);
+  }
+
+  video.loadPixels();
+  ffPrev.loadPixels();
+  ffBuffer.loadPixels();
+  
+  // paramA controls sensitivity
+  let thresh = map(paramA, 0, 1, 10, 100);
+  
+  if (video.pixels.length > 0 && ffPrev.pixels.length === video.pixels.length) {
+    for (let i = 0; i < video.pixels.length; i += 4) {
+      let r = video.pixels[i];
+      let g = video.pixels[i+1];
+      let b = video.pixels[i+2];
+      
+      let pr = ffPrev.pixels[i];
+      let pg = ffPrev.pixels[i+1];
+      let pb = ffPrev.pixels[i+2];
+      
+      let diff = abs(r - pr) + abs(g - pg) + abs(b - pb);
+      
+      // If motion detected, update buffer with NEW video pixel
+      if (diff > thresh) {
+         ffBuffer.pixels[i] = r;
+         ffBuffer.pixels[i+1] = g;
+         ffBuffer.pixels[i+2] = b;
+         ffBuffer.pixels[i+3] = 255;
+      }
+    }
+    ffBuffer.updatePixels();
+  }
+  
+  image(ffBuffer, 0, 0);
+  
+  // Update previous frame
+  ffPrev.image(video, 0, 0, width, height);
+"""
+    },
+    "58": {
+        "name": "Time Displacement Map",
+        "description": "Uses a grayscale map to determine which 'time' (past frame) to sample from. (Ref: Doctor Who Intro)",
+        "global_vars": "let tdHistory = [];",
+        "draw_loop": """
+  // Buffer history
+  tdHistory.push(video.get());
+  let maxFrames = 50;
+  if (tdHistory.length > maxFrames) tdHistory.shift();
+  
+  background(0);
+  
+  if (tdHistory.length > 0) {
+    // Ensure current frame pixels are loaded
+    tdHistory[tdHistory.length-1].loadPixels();
+    loadPixels();
+    
+    let cx = width/2;
+    let cy = height/2;
+    
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // Calculate delay based on radial distance
+        let d = dist(x, y, cx, cy);
+        let maxD = dist(0, 0, cx, cy);
+        let normD = d / maxD; 
+        
+        // paramA modifies the pattern
+        let delayIndex = floor(map(normD, 0, 1, 0, tdHistory.length - 1));
+        if (paramA > 0.5) delayIndex = tdHistory.length - 1 - delayIndex;
+        
+        delayIndex = constrain(delayIndex, 0, tdHistory.length - 1);
+        
+        let frame = tdHistory[delayIndex];
+        // Lazy load pixels if needed
+        if (!frame.pixels || frame.pixels.length === 0) frame.loadPixels();
+        
+        let idx = (x + y * width) * 4;
+        pixels[idx] = frame.pixels[idx];
+        pixels[idx+1] = frame.pixels[idx+1];
+        pixels[idx+2] = frame.pixels[idx+2];
+        pixels[idx+3] = 255;
+      }
+    }
+    updatePixels();
+  }
+"""
+    },
+    "59": {
+        "name": "Optical Flow Particles",
+        "description": "Particles flow in the direction of movement detected in the video. (Ref: Wind Simulation)",
+        "global_vars": "let ofParticles = []; let ofPrevPixels;",
+        "draw_loop": """
+  background(0, 50); // Trails
+  
+  if (ofParticles.length === 0) {
+    for(let i=0; i<200; i++) ofParticles.push({x: random(width), y: random(height), vx: 0, vy: 0});
+  }
+  
+  video.loadPixels();
+  if (!ofPrevPixels) ofPrevPixels = new Uint8ClampedArray(video.pixels);
+  
+  for (let p of ofParticles) {
+    let x = floor(p.x);
+    let y = floor(p.y);
+    let idx = (x + y * width) * 4;
+    
+    if (x > 0 && x < width-1 && y > 0 && y < height-1) {
+       let curr = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+       let prev = (ofPrevPixels[idx] + ofPrevPixels[idx+1] + ofPrevPixels[idx+2]) / 3;
+       
+       // Simplified Gradient-based Flow
+       let idxLeft = (x - 1 + y * width) * 4;
+       let idxRight = (x + 1 + y * width) * 4;
+       let idxUp = (x + (y - 1) * width) * 4;
+       let idxDown = (x + (y + 1) * width) * 4;
+       
+       let left = (video.pixels[idxLeft] + video.pixels[idxLeft+1] + video.pixels[idxLeft+2]) / 3;
+       let right = (video.pixels[idxRight] + video.pixels[idxRight+1] + video.pixels[idxRight+2]) / 3;
+       let up = (video.pixels[idxUp] + video.pixels[idxUp+1] + video.pixels[idxUp+2]) / 3;
+       let down = (video.pixels[idxDown] + video.pixels[idxDown+1] + video.pixels[idxDown+2]) / 3;
+       
+       let Ix = (right - left) * 0.5;
+       let Iy = (down - up) * 0.5;
+       let It = curr - prev;
+       
+       let denom = Ix*Ix + Iy*Iy + 100; // Epsilon to prevent div by zero
+       let u = -It * Ix / denom;
+       let v = -It * Iy / denom;
+       
+       let scale = map(paramA, 0, 1, 10, 100);
+       p.vx += u * scale;
+       p.vy += v * scale;
+    }
+    
+    p.vx *= 0.9; // Friction
+    p.vy *= 0.9;
+    p.x += p.vx;
+    p.y += p.vy;
+    
+    if (p.x < 0) p.x = width;
+    if (p.x > width) p.x = 0;
+    if (p.y < 0) p.y = height;
+    if (p.y > height) p.y = 0;
+    
+    stroke(255);
+    point(p.x, p.y);
+  }
+  
+  ofPrevPixels.set(video.pixels);
+"""
+    },
+    "60": {
+        "name": "Frame Averaging",
+        "description": "Averages the last 100 frames to remove moving objects entirely. (Ref: Empty Streets)",
+        "global_vars": "let faSum; let faHistory = [];",
+        "draw_loop": """
+  if (!faSum || faSum.length !== width * height * 3) {
+    faSum = new Float32Array(width * height * 3);
+    faHistory = [];
+  }
+  
+  video.loadPixels();
+  
+  // Add current frame
+  let currentFrameData = new Uint8ClampedArray(video.pixels);
+  faHistory.push(currentFrameData);
+  
+  // Add to sum
+  for (let i = 0, j = 0; i < video.pixels.length; i += 4, j += 3) {
+    faSum[j] += video.pixels[i];
+    faSum[j+1] += video.pixels[i+1];
+    faSum[j+2] += video.pixels[i+2];
+  }
+  
+  // Remove old frame if buffer full
+  let maxFrames = 100;
+  if (faHistory.length > maxFrames) {
+    let old = faHistory.shift();
+    for (let i = 0, j = 0; i < old.length; i += 4, j += 3) {
+      faSum[j] -= old[i];
+      faSum[j+1] -= old[i+1];
+      faSum[j+2] -= old[i+2];
+    }
+  }
+  
+  // Display average
+  loadPixels();
+  let count = faHistory.length;
+  for (let i = 0, j = 0; i < pixels.length; i += 4, j += 3) {
+    pixels[i] = faSum[j] / count;
+    pixels[i+1] = faSum[j+1] / count;
+    pixels[i+2] = faSum[j+2] / count;
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
     }
 }
