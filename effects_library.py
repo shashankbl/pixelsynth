@@ -2336,5 +2336,640 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "61": {
+        "name": "Stroboscope",
+        "description": "Only updates the video frame every X milliseconds. (Ref: Stop Motion)",
+        "global_vars": "let lastUpdate = 0; let strobeFrame;",
+        "draw_loop": """
+  if (!strobeFrame || strobeFrame.width !== width) {
+    strobeFrame = createGraphics(width, height);
+    strobeFrame.pixelDensity(1);
+  }
+
+  // paramA controls delay (200ms to 2000ms)
+  let delay = map(paramA, 0, 1, 200, 2000);
+  
+  if (millis() - lastUpdate > delay) {
+    strobeFrame.image(video, 0, 0, width, height);
+    lastUpdate = millis();
+  }
+  
+  image(strobeFrame, 0, 0);
+"""
+    },
+    "62": {
+        "name": "Decay",
+        "description": "Bright pixels fade to black slowly over time. (Ref: Phosphor Burn-in)",
+        "global_vars": "let decayBuffer;",
+        "draw_loop": """
+  if (!decayBuffer || decayBuffer.width !== width) {
+    decayBuffer = createGraphics(width, height);
+    decayBuffer.pixelDensity(1);
+    decayBuffer.background(0);
+  }
+  
+  // Draw semi-transparent black rect to fade out old pixels
+  // paramA controls decay speed (fade amount)
+  let fade = map(paramA, 0, 1, 1, 20);
+  
+  decayBuffer.noStroke();
+  decayBuffer.fill(0, fade);
+  decayBuffer.rect(0, 0, width, height);
+  
+  // Draw current video on top using LIGHTEST blend mode to keep bright pixels
+  decayBuffer.blendMode(LIGHTEST);
+  decayBuffer.image(video, 0, 0, width, height);
+  decayBuffer.blendMode(BLEND);
+  
+  image(decayBuffer, 0, 0);
+"""
+    },
+    "63": {
+        "name": "Difference Clouds",
+        "description": "Multiplies the video feed by Perlin noise that evolves over time. (Ref: Fog)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  let scale = 0.02;
+  let time = frameCount * 0.01;
+  // paramA controls noise intensity/mix
+  let mix = map(paramA, 0, 1, 0.5, 1.0);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      
+      let n = noise(x * scale, y * scale, time);
+      let factor = lerp(1, n, mix); // 1 means no effect, n means full noise mult
+      
+      pixels[idx] = video.pixels[idx] * factor;
+      pixels[idx+1] = video.pixels[idx+1] * factor;
+      pixels[idx+2] = video.pixels[idx+2] * factor;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "64": {
+        "name": "Pointillism",
+        "description": "Draws random colored circles; density is higher in detailed areas. (Ref: Seurat)",
+        "global_vars": "",
+        "draw_loop": """
+  // Don't clear background completely to build up density
+  noStroke();
+  fill(0, 10);
+  rect(0, 0, width, height);
+  
+  video.loadPixels();
+  
+  // paramA controls dot size
+  let dotSize = map(paramA, 0, 1, 4, 15);
+  let numDots = 500;
+  
+  for (let i = 0; i < numDots; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    let idx = (x + y * width) * 4;
+    
+    let r = video.pixels[idx];
+    let g = video.pixels[idx+1];
+    let b = video.pixels[idx+2];
+    
+    fill(r, g, b, 200);
+    ellipse(x, y, dotSize, dotSize);
+  }
+"""
+    },
+    "65": {
+        "name": "Oil Painting",
+        "description": "Scans local neighborhoods and outputs the most frequent color (Kuwahara filter). (Ref: Impressionism)",
+        "global_vars": "",
+        "draw_loop": """
+  video.loadPixels();
+  noStroke();
+  
+  // Simplified Kuwahara Filter (Optimized for performance)
+  // We process a grid instead of every pixel to maintain frame rate
+  
+  // paramA controls brush size / grid step
+  let step = floor(map(paramA, 0, 1, 4, 10));
+  let radius = step;
+  
+  for (let y = radius; y < height - radius; y += step) {
+    for (let x = radius; x < width - radius; x += step) {
+      
+      // Analyze 4 sub-regions (TL, TR, BL, BR)
+      let bestMean = [0,0,0];
+      let minVar = Infinity;
+      
+      // Offsets for 4 quadrants relative to center
+      let quadrants = [
+        [-radius, -radius, 0, 0], // TL
+        [0, -radius, radius, 0],  // TR
+        [-radius, 0, 0, radius],  // BL
+        [0, 0, radius, radius]    // BR
+      ];
+      
+      for (let q of quadrants) {
+        let meanR = 0, meanG = 0, meanB = 0;
+        let count = 0;
+        
+        // Sample pixels in quadrant
+        for (let j = q[1]; j <= q[3]; j+=2) {
+          for (let i = q[0]; i <= q[2]; i+=2) {
+             let idx = ((x + i) + (y + j) * width) * 4;
+             meanR += video.pixels[idx];
+             meanG += video.pixels[idx+1];
+             meanB += video.pixels[idx+2];
+             count++;
+          }
+        }
+        meanR /= count; meanG /= count; meanB /= count;
+        
+        // Calculate Variance (simplified: just brightness variance)
+        let variance = 0;
+        for (let j = q[1]; j <= q[3]; j+=2) {
+          for (let i = q[0]; i <= q[2]; i+=2) {
+             let idx = ((x + i) + (y + j) * width) * 4;
+             let val = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2])/3;
+             let meanVal = (meanR + meanG + meanB)/3;
+             variance += (val - meanVal) * (val - meanVal);
+          }
+        }
+        
+        if (variance < minVar) {
+          minVar = variance;
+          bestMean = [meanR, meanG, meanB];
+        }
+      }
+      
+      fill(bestMean[0], bestMean[1], bestMean[2]);
+      // Draw slightly overlapping rects for painterly look
+      rect(x - step/2, y - step/2, step + 2, step + 2);
+    }
+  }
+"""
+    },
+    "66": {
+        "name": "Watercolor",
+        "description": "Layers semi-transparent blobs of color with jagged edges. (Ref: Wet-on-wet)",
+        "global_vars": "",
+        "draw_loop": """
+  // Fade background to white slowly (Wet paper effect)
+  noStroke();
+  fill(255, 10);
+  rect(0, 0, width, height);
+  
+  video.loadPixels();
+  
+  // paramA controls blob spread
+  let spread = map(paramA, 0, 1, 10, 40);
+  let numBlobs = 30;
+  
+  for (let i = 0; i < numBlobs; i++) {
+    let x = random(width);
+    let y = random(height);
+    let idx = (floor(x) + floor(y) * width) * 4;
+    
+    let r = video.pixels[idx];
+    let g = video.pixels[idx+1];
+    let b = video.pixels[idx+2];
+    
+    // Very low opacity for layering
+    fill(r, g, b, 40);
+    
+    beginShape();
+    // Create jagged/organic shape
+    for (let a = 0; a < TWO_PI; a += 0.5) {
+      let offset = random(-5, 5);
+      let rad = spread + offset;
+      let vx = x + cos(a) * rad;
+      let vy = y + sin(a) * rad;
+      curveVertex(vx, vy);
+    }
+    endShape(CLOSE);
+  }
+"""
+    },
+    "67": {
+        "name": "Impasto",
+        "description": "Uses brightness to simulate thick paint strokes with 'height'. (Ref: Van Gogh)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls stroke size
+  let step = floor(map(paramA, 0, 1, 5, 20));
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      let bright = (r + g + b) / 3;
+      
+      // Angle based on brightness
+      let angle = map(bright, 0, 255, 0, TWO_PI);
+      
+      push();
+      translate(x, y);
+      rotate(angle);
+      
+      // Shadow (offset)
+      fill(0, 100);
+      rect(2, 2, step, step/2);
+      
+      // Stroke
+      fill(r, g, b);
+      rect(0, 0, step, step/2);
+      pop();
+    }
+  }
+"""
+    },
+    "68": {
+        "name": "Charcoal",
+        "description": "High contrast edge detection with added grain noise. (Ref: Sketch)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 10, 60);
+  
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      let idx = (x + y * width) * 4;
+      let idxRight = ((x + 1) + y * width) * 4;
+      let idxDown = (x + (y + 1) * width) * 4;
+      
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      let bRight = (video.pixels[idxRight] + video.pixels[idxRight+1] + video.pixels[idxRight+2]) / 3;
+      let bDown = (video.pixels[idxDown] + video.pixels[idxDown+1] + video.pixels[idxDown+2]) / 3;
+      
+      let diff = abs(b - bRight) + abs(b - bDown);
+      
+      let destIdx = (x + y * width) * 4;
+      
+      if (diff > thresh) {
+        // Edge: Black with some noise
+        let val = random(50);
+        pixels[destIdx] = val;
+        pixels[destIdx+1] = val;
+        pixels[destIdx+2] = val;
+      } else {
+        // Background: White with grain
+        let val = 255 - random(20);
+        pixels[destIdx] = val;
+        pixels[destIdx+1] = val;
+        pixels[destIdx+2] = val;
+      }
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "69": {
+        "name": "Mosaic Tiles",
+        "description": "Irregular polygonal shapes with thick mortar lines between them. (Ref: Roman Floors)",
+        "global_vars": "",
+        "draw_loop": """
+  background(50); // Dark mortar
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls tile size
+  let step = floor(map(paramA, 0, 1, 10, 30));
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      // Sample center color
+      let cx = floor(x + step/2);
+      let cy = floor(y + step/2);
+      if (cx >= width || cy >= height) continue;
+      
+      let idx = (cx + cy * width) * 4;
+      fill(video.pixels[idx], video.pixels[idx+1], video.pixels[idx+2]);
+      
+      // Draw irregular quad inside the grid cell
+      // Shrink slightly to show mortar
+      let gap = 2;
+      let x1 = x + gap + random(2);
+      let y1 = y + gap + random(2);
+      let x2 = x + step - gap - random(2);
+      let y2 = y + gap + random(2);
+      let x3 = x + step - gap - random(2);
+      let y3 = y + step - gap - random(2);
+      let x4 = x + gap + random(2);
+      let y4 = y + step - gap - random(2);
+      
+      beginShape();
+      vertex(x1, y1);
+      vertex(x2, y2);
+      vertex(x3, y3);
+      vertex(x4, y4);
+      endShape(CLOSE);
+    }
+  }
+"""
+    },
+    "70": {
+        "name": "Stained Glass (Glow)",
+        "description": "High saturation Voronoi cells with a bloom filter. (Ref: Cathedral)",
+        "global_vars": "let sgSeeds = []; let sgPg;",
+        "draw_loop": """
+  if (!sgPg || sgPg.width !== width) {
+    sgPg = createGraphics(width, height);
+    sgPg.pixelDensity(1);
+  }
+
+  video.loadPixels();
+  
+  // paramA controls cell count
+  let numSeeds = floor(map(paramA, 0, 1, 20, 80));
+  
+  if (sgSeeds.length !== numSeeds) {
+    sgSeeds = [];
+    for (let i = 0; i < numSeeds; i++) {
+      sgSeeds.push({x: random(width), y: random(height)});
+    }
+  }
+  
+  sgPg.background(0);
+  sgPg.noStroke();
+  
+  // Draw Voronoi to offscreen buffer
+  let step = 6;
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let minDist = Infinity;
+      let closest = -1;
+      
+      for (let i = 0; i < sgSeeds.length; i++) {
+        let d = (x - sgSeeds[i].x)**2 + (y - sgSeeds[i].y)**2;
+        if (d < minDist) { minDist = d; closest = i; }
+      }
+      
+      let s = sgSeeds[closest];
+      let sx = floor(constrain(s.x, 0, width-1));
+      let sy = floor(constrain(s.y, 0, height-1));
+      let idx = (sx + sy * width) * 4;
+      
+      // Boost saturation simply by increasing max channel and decreasing min
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      
+      // Simple saturation boost
+      let maxC = Math.max(r, g, b);
+      if (r !== maxC) r *= 0.8;
+      if (g !== maxC) g *= 0.8;
+      if (b !== maxC) b *= 0.8;
+      
+      sgPg.fill(r * 1.2, g * 1.2, b * 1.2);
+      sgPg.rect(x, y, step, step);
+    }
+  }
+  
+  // Draw buffer
+  image(sgPg, 0, 0);
+  
+  // Draw bloom (buffer drawn again with blur and ADD blend)
+  push();
+  blendMode(ADD);
+  drawingContext.filter = 'blur(15px)';
+  image(sgPg, 0, 0);
+  drawingContext.filter = 'none';
+  pop();
+"""
+    },
+    "71": {
+        "name": "Spray Paint",
+        "description": "Random splatter particles appear where the image is darkest. (Ref: Graffiti)",
+        "global_vars": "",
+        "draw_loop": """
+  // Fade background slowly
+  noStroke();
+  fill(255, 10);
+  rect(0, 0, width, height);
+  
+  video.loadPixels();
+  
+  // paramA controls spray density
+  let density = map(paramA, 0, 1, 50, 200);
+  
+  for (let i = 0; i < density; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    let idx = (x + y * width) * 4;
+    
+    let r = video.pixels[idx];
+    let g = video.pixels[idx+1];
+    let b = video.pixels[idx+2];
+    let bright = (r + g + b) / 3;
+    
+    // Only spray on dark areas
+    if (bright < 100) {
+      let radius = random(5, 15);
+      let colorVar = random(-20, 20);
+      
+      fill(r + colorVar, g + colorVar, b + colorVar);
+      
+      // Draw splatter cluster
+      for (let j = 0; j < 5; j++) {
+        let ox = random(-radius, radius);
+        let oy = random(-radius, radius);
+        if (ox*ox + oy*oy < radius*radius) {
+           ellipse(x + ox, y + oy, 2, 2);
+        }
+      }
+    }
+  }
+"""
+    },
+    "72": {
+        "name": "Cubism",
+        "description": "Overlays multiple perspectives or shifted blocks of the image. (Ref: Picasso)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls fragmentation
+  let cols = floor(map(paramA, 0, 1, 2, 8));
+  let rows = cols;
+  let w = width / cols;
+  let h = height / rows;
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let px = x * w;
+      let py = y * h;
+      
+      // Random offset for source rectangle
+      let ox = random(-20, 20);
+      let oy = random(-20, 20);
+      
+      // Random scale/rotation for that block
+      push();
+      translate(px + w/2, py + h/2);
+      rotate(random(-0.1, 0.1));
+      
+      // Draw part of video
+      // source x, y, w, h -> dest x, y, w, h
+      // We are drawing centered at 0,0 because of translate
+      let sx = px + ox;
+      let sy = py + oy;
+      
+      // Ensure source is within bounds
+      sx = constrain(sx, 0, width - w);
+      sy = constrain(sy, 0, height - h);
+      
+      image(video, -w/2, -h/2, w, h, sx, sy, w, h);
+      
+      // Draw border
+      noFill();
+      stroke(0);
+      strokeWeight(2);
+      rect(-w/2, -h/2, w, h);
+      pop();
+    }
+  }
+"""
+    },
+    "73": {
+        "name": "Ink Wash",
+        "description": "Converts to grayscale and simulates ink diffusion/bleeding. (Ref: Sumi-e)",
+        "global_vars": "",
+        "draw_loop": """
+  // Slow fade for trail effect
+  noStroke();
+  fill(255, 20);
+  rect(0, 0, width, height);
+  
+  video.loadPixels();
+  
+  // paramA controls number of drops
+  let drops = floor(map(paramA, 0, 1, 10, 50));
+  
+  for (let i = 0; i < drops; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    let idx = (x + y * width) * 4;
+    
+    let bright = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+    
+    // Ink is dark
+    if (bright < 150) {
+      let radius = map(bright, 0, 150, 20, 2); // Darker = larger blob
+      
+      fill(0, 50); // Semi-transparent black
+      
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.5) {
+        let r = radius + random(-2, 2);
+        vertex(x + cos(a) * r, y + sin(a) * r);
+      }
+      endShape(CLOSE);
+    }
+  }
+"""
+    },
+    "74": {
+        "name": "Pastel",
+        "description": "Softens colors and adds a rough paper texture overlay. (Ref: Chalk)",
+        "global_vars": "let paperTexture;",
+        "draw_loop": """
+  if (!paperTexture) {
+    paperTexture = createGraphics(width, height);
+    paperTexture.noStroke();
+    for (let i = 0; i < 10000; i++) {
+      paperTexture.fill(random(200, 255), 50);
+      paperTexture.rect(random(width), random(height), 2, 2);
+    }
+  }
+
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls color simplification
+  let levels = floor(map(paramA, 0, 1, 4, 12));
+  let bin = 255 / levels;
+  
+  for (let i = 0; i < pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i+1];
+    let b = video.pixels[i+2];
+    
+    // Quantize and brighten (Pastel look)
+    r = floor(r / bin) * bin + bin/2 + 20;
+    g = floor(g / bin) * bin + bin/2 + 20;
+    b = floor(b / bin) * bin + bin/2 + 20;
+    
+    pixels[i] = constrain(r, 0, 255);
+    pixels[i+1] = constrain(g, 0, 255);
+    pixels[i+2] = constrain(b, 0, 255);
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+  
+  // Overlay texture
+  image(paperTexture, 0, 0);
+"""
+    },
+    "75": {
+        "name": "Pencil Hatching",
+        "description": "Uses generated flow fields to direct pencil strokes along image contours. (Ref: Drawing)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  stroke(0, 150);
+  strokeWeight(1);
+  
+  // paramA controls stroke density
+  let density = floor(map(paramA, 0, 1, 1000, 5000));
+  
+  for (let i = 0; i < density; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    
+    // Sobel-like gradient approximation
+    let idx = (x + y * width) * 4;
+    let idxRight = (min(x+1, width-1) + y * width) * 4;
+    let idxDown = (x + min(y+1, height-1) * width) * 4;
+    
+    let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+    let bRight = (video.pixels[idxRight] + video.pixels[idxRight+1] + video.pixels[idxRight+2]) / 3;
+    let bDown = (video.pixels[idxDown] + video.pixels[idxDown+1] + video.pixels[idxDown+2]) / 3;
+    
+    // Only draw in darker areas
+    if (b < 200) {
+      let dx = bRight - b;
+      let dy = bDown - b;
+      
+      // Angle perpendicular to gradient (contour)
+      let angle = atan2(dy, dx) + HALF_PI;
+      
+      let len = map(b, 0, 200, 10, 2);
+      
+      push();
+      translate(x, y);
+      rotate(angle);
+      line(-len, 0, len, 0);
+      pop();
+    }
+  }
+"""
     }
 }

@@ -67,6 +67,21 @@ This project acts as a template engine. It allows you to select an artistic effe
 58. **Time Displacement Map**: Uses a grayscale map to determine which "time" (past frame) to sample from.
 59. **Optical Flow Particles**: Particles flow in the direction of movement detected in the video.
 60. **Frame Averaging**: Averages the last 100 frames to remove moving objects entirely.
+61. **Stroboscope**: Only updates the video frame every X milliseconds.
+62. **Decay**: Bright pixels fade to black slowly over time.
+63. **Difference Clouds**: Multiplies the video feed by Perlin noise that evolves over time.
+64. **Pointillism**: Draws random colored circles; density is higher in detailed areas.
+65. **Oil Painting**: Scans local neighborhoods and outputs the most frequent color (Kuwahara filter).
+66. **Watercolor**: Layers semi-transparent blobs of color with jagged edges.
+67. **Impasto**: Uses brightness to simulate thick paint strokes with "height".
+68. **Charcoal**: High contrast edge detection with added grain noise.
+69. **Mosaic Tiles**: Irregular polygonal shapes with thick mortar lines between them.
+70. **Stained Glass (Glow)**: High saturation Voronoi cells with a bloom filter.
+71. **Spray Paint**: Random splatter particles appear where the image is darkest.
+72. **Cubism**: Overlays multiple perspectives or shifted blocks of the image.
+73. **Ink Wash**: Converts to grayscale and simulates ink diffusion/bleeding.
+74. **Pastel**: Softens colors and adds a rough paper texture overlay.
+75. **Pencil Hatching**: Uses generated flow fields to direct pencil strokes along image contours.
 
 
 ## How to Use
