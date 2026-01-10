@@ -439,5 +439,368 @@ const density = "Ñ@#W$9876543210?!abc;:+=-,._ ";
     }
   }
 """
+    },
+    "13": {
+        "name": "Delaunay Triangulation",
+        "description": "Connects random points to form triangles, colored by the centroid. (Ref: Mesh Generation)",
+        "global_vars": """
+let dPoints = [];
+let dTriangles = [];
+let lastParamA = -1;
+
+function circumcircle(a, b, c) {
+  let D = 2 * (a.x * (b.y - c.y) + b.x * (c.y - a.y) + c.x * (a.y - b.y));
+  // Avoid division by zero for collinear points
+  if (abs(D) < 0.001) return {x:0, y:0, r:Infinity};
+  let ux = ((a.x * a.x + a.y * a.y) * (b.y - c.y) + (b.x * b.x + b.y * b.y) * (c.y - a.y) + (c.x * c.x + c.y * c.y) * (a.y - b.y)) / D;
+  let uy = ((a.x * a.x + a.y * a.y) * (c.x - b.x) + (b.x * b.x + b.y * b.y) * (a.x - c.x) + (c.x * c.x + c.y * c.y) * (b.x - a.x)) / D;
+  let r = dist(ux, uy, a.x, a.y);
+  return { x: ux, y: uy, r: r };
+}
+""",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  stroke(0);
+  strokeWeight(1);
+  
+  // paramA controls number of points (10 to 25)
+  // Kept low because brute-force Delaunay is O(N^4)
+  let numPoints = floor(map(paramA, 0, 1, 10, 25));
+  
+  if (numPoints !== lastParamA) {
+    lastParamA = numPoints;
+    dPoints = [];
+    
+    // Add random points
+    for (let i = 0; i < numPoints; i++) {
+      dPoints.push(createVector(random(width), random(height)));
+    }
+    // Add corners to ensure screen coverage
+    dPoints.push(createVector(0, 0));
+    dPoints.push(createVector(width, 0));
+    dPoints.push(createVector(width, height));
+    dPoints.push(createVector(0, height));
+    
+    // Brute force Delaunay
+    dTriangles = [];
+    for (let i = 0; i < dPoints.length; i++) {
+      for (let j = i + 1; j < dPoints.length; j++) {
+        for (let k = j + 1; k < dPoints.length; k++) {
+          let p1 = dPoints[i];
+          let p2 = dPoints[j];
+          let p3 = dPoints[k];
+          
+          let circle = circumcircle(p1, p2, p3);
+          let valid = true;
+          
+          // Check if any other point is inside circumcircle
+          for (let m = 0; m < dPoints.length; m++) {
+            if (m === i || m === j || m === k) continue;
+            if (dist(dPoints[m].x, dPoints[m].y, circle.x, circle.y) < circle.r - 0.1) {
+              valid = false;
+              break;
+            }
+          }
+          
+          if (valid) {
+            dTriangles.push([p1, p2, p3]);
+          }
+        }
+      }
+    }
+  }
+  
+  // Draw triangles
+  for (let t of dTriangles) {
+    let p1 = t[0];
+    let p2 = t[1];
+    let p3 = t[2];
+    
+    // Centroid
+    let cx = (p1.x + p2.x + p3.x) / 3;
+    let cy = (p1.y + p2.y + p3.y) / 3;
+    
+    let px = floor(constrain(cx, 0, width - 1));
+    let py = floor(constrain(cy, 0, height - 1));
+    let idx = (px + py * width) * 4;
+    
+    fill(video.pixels[idx], video.pixels[idx+1], video.pixels[idx+2]);
+    triangle(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+  }
+"""
+    },
+    "14": {
+        "name": "Quantized Dot Matrix",
+        "description": "Fixed-size dots that turn on/off based on a brightness threshold. (Ref: LED Sign)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls grid size (LED density)
+  let step = floor(map(paramA, 0, 1, 8, 30));
+  let dotSize = step * 0.8; // Leave some spacing
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let index = (x + y * width) * 4;
+      let r = video.pixels[index];
+      let g = video.pixels[index + 1];
+      let b = video.pixels[index + 2];
+      let bright = (r + g + b) / 3;
+      
+      // Threshold check: If bright enough, show color, else show dim 'off' state
+      if (bright > 80) fill(r, g, b);
+      else fill(30);
+      
+      ellipse(x + step/2, y + step/2, dotSize);
+    }
+  }
+"""
+    },
+    "15": {
+        "name": "Concentric Circles",
+        "description": "The image is constructed from concentric rings of varying colors. (Ref: Vinyl Record)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noFill();
+  
+  let cx = width / 2;
+  let cy = height / 2;
+  let maxRadius = dist(0, 0, cx, cy) + 20;
+  
+  // paramA controls ring thickness
+  let step = floor(map(paramA, 0, 1, 5, 50));
+  strokeWeight(step);
+  
+  for (let r = 0; r < maxRadius; r += step) {
+    let sumR = 0, sumG = 0, sumB = 0;
+    let count = 0;
+    
+    // Sample points along the ring to get an average color
+    for (let angle = 0; angle < TWO_PI; angle += 0.1) {
+      let x = floor(cx + cos(angle) * r);
+      let y = floor(cy + sin(angle) * r);
+      
+      if (x >= 0 && x < width && y >= 0 && y < height) {
+        let idx = (x + y * width) * 4;
+        sumR += video.pixels[idx];
+        sumG += video.pixels[idx+1];
+        sumB += video.pixels[idx+2];
+        count++;
+      }
+    }
+    
+    if (count > 0) {
+      stroke(sumR / count, sumG / count, sumB / count);
+      ellipse(cx, cy, r * 2, r * 2);
+    }
+  }
+"""
+    },
+    "16": {
+        "name": "Brick Wall",
+        "description": "Staggered rectangles filled with the average color of that region. (Ref: Masonry)",
+        "global_vars": "",
+        "draw_loop": """
+  background(50); // Dark mortar color
+  video.loadPixels();
+  stroke(50);
+  strokeWeight(2);
+  
+  // paramA controls brick height (width is 2x height)
+  let bh = floor(map(paramA, 0, 1, 10, 40));
+  let bw = bh * 2;
+  
+  for (let y = 0; y < height; y += bh) {
+    // Stagger every other row
+    let row = floor(y / bh);
+    let startX = (row % 2 === 0) ? 0 : -bw / 2;
+    
+    for (let x = startX; x < width; x += bw) {
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      
+      // Sample pixels within the brick to calculate average
+      // Using a step size of 4 for performance
+      for (let sy = 0; sy < bh; sy += 4) {
+        for (let sx = 0; sx < bw; sx += 4) {
+          let px = floor(x + sx);
+          let py = floor(y + sy);
+          
+          if (px >= 0 && px < width && py >= 0 && py < height) {
+            let idx = (px + py * width) * 4;
+            rSum += video.pixels[idx];
+            gSum += video.pixels[idx+1];
+            bSum += video.pixels[idx+2];
+            count++;
+          }
+        }
+      }
+      
+      if (count > 0) {
+        fill(rSum / count, gSum / count, bSum / count);
+        rect(x, y, bw, bh);
+      }
+    }
+  }
+"""
+    },
+    "17": {
+        "name": "Sine Wave Modulation",
+        "description": "Rows of sine waves where amplitude is driven by pixel brightness. (Ref: Joy Division Album Cover)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  stroke(255);
+  fill(0); // Fill black to occlude lines behind
+  strokeWeight(1);
+  
+  // paramA controls vertical spacing
+  let step = floor(map(paramA, 0, 1, 10, 40));
+  
+  for (let y = step; y < height; y += step) {
+    beginShape();
+    vertex(0, y); // Anchor start
+    for (let x = 0; x < width; x += 5) {
+      let index = (x + y * width) * 4;
+      let bright = (video.pixels[index] + video.pixels[index+1] + video.pixels[index+2]) / 3;
+      let amp = map(bright, 0, 255, 0, step * 1.5);
+      vertex(x, y - amp);
+    }
+    vertex(width, y); // Anchor end
+    endShape();
+  }
+"""
+    },
+    "18": {
+        "name": "Binary Noise",
+        "description": "Random black/white pixels; probability of white is tied to source brightness. (Ref: Dithering)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls pixel size (resolution)
+  let step = floor(map(paramA, 0, 1, 1, 10));
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let index = (x + y * width) * 4;
+      let r = video.pixels[index];
+      let g = video.pixels[index + 1];
+      let b = video.pixels[index + 2];
+      let bright = (r + g + b) / 3;
+      
+      // Stochastic dithering:
+      // Probability of being white is proportional to brightness
+      if (random(255) < bright) fill(255);
+      else fill(0);
+      
+      rect(x, y, step, step);
+    }
+  }
+"""
+    },
+    "19": {
+        "name": "Adaptive Quadtree",
+        "description": "Recursively divides squares into smaller squares only in areas of high contrast. (Ref: Compression)",
+        "global_vars": """
+function qtColor(x, y, w, h) {
+  let r = 0, g = 0, b = 0;
+  let count = 0;
+  let step = 2;
+  for (let j = y; j < y + h; j += step) {
+    for (let i = x; i < x + w; i += step) {
+      if (i >= width || j >= height) continue;
+      let idx = (floor(i) + floor(j) * width) * 4;
+      r += video.pixels[idx];
+      g += video.pixels[idx+1];
+      b += video.pixels[idx+2];
+      count++;
+    }
+  }
+  if (count === 0) return {r:0, g:0, b:0};
+  return {r: r/count, g: g/count, b: b/count};
+}
+
+function drawQuadtree(x, y, w, h, threshold) {
+  let avg = qtColor(x, y, w, h);
+  
+  // Calculate error (variance)
+  let err = 0;
+  let count = 0;
+  let step = 4;
+  for (let j = y; j < y + h; j += step) {
+    for (let i = x; i < x + w; i += step) {
+      if (i >= width || j >= height) continue;
+      let idx = (floor(i) + floor(j) * width) * 4;
+      err += abs(video.pixels[idx] - avg.r) + abs(video.pixels[idx+1] - avg.g) + abs(video.pixels[idx+2] - avg.b);
+      count++;
+    }
+  }
+  err = (count > 0) ? err / count : 0;
+
+  if (err > threshold && w > 6) {
+    let hw = w / 2;
+    let hh = h / 2;
+    drawQuadtree(x, y, hw, hh, threshold);
+    drawQuadtree(x + hw, y, hw, hh, threshold);
+    drawQuadtree(x, y + hh, hw, hh, threshold);
+    drawQuadtree(x + hw, y + hh, hw, hh, threshold);
+  } else {
+    fill(avg.r, avg.g, avg.b);
+    rect(x, y, w, h);
+  }
+}
+""",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls threshold (Detail level)
+  let threshold = map(paramA, 0, 1, 100, 15);
+  
+  drawQuadtree(0, 0, width, height, threshold);
+"""
+    },
+    "20": {
+        "name": "Solarization",
+        "description": "Inverts pixel values only above a certain brightness threshold. (Ref: Man Ray Photography)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls the threshold
+  let threshold = map(paramA, 0, 1, 0, 255);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    let bright = (r + g + b) / 3;
+    
+    if (bright > threshold) {
+      pixels[i] = 255 - r;
+      pixels[i + 1] = 255 - g;
+      pixels[i + 2] = 255 - b;
+    } else {
+      pixels[i] = r;
+      pixels[i + 1] = g;
+      pixels[i + 2] = b;
+    }
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
     }
 }
