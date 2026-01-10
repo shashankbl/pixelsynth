@@ -3,6 +3,7 @@ import sys
 import http.server
 import socketserver
 import webbrowser
+import threading
 from effects_library import EFFECTS
 
 TEMPLATE_DIR = "."
@@ -29,6 +30,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=OUTPUT_DIR, **kwargs)
 
+    def do_GET(self):
+        if self.path == '/shutdown':
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Server shutting down...")
+            print("\nRemote shutdown requested. Exiting.")
+            threading.Timer(0.5, lambda: os._exit(0)).start()
+        else:
+            super().do_GET()
+
 class ReusableTCPServer(socketserver.TCPServer):
     allow_reuse_address = True
 
@@ -53,7 +64,7 @@ def main():
     for key, effect in EFFECTS.items():
         print(f"[{key}] {effect['name']} - {effect['description']}")
     
-    choice = input("\nEnter choice (1-3): ").strip()
+    choice = input("\nEnter choice (1-12): ").strip()
     
     if choice not in EFFECTS:
         print("Invalid selection. Exiting.")

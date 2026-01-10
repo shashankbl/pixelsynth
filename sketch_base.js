@@ -8,7 +8,7 @@ let helpVisible = false;
 // [INJECTED GLOBAL VARIABLES END]
 
 function setup() {
-  createCanvas(960, 540);
+  createCanvas(800, 600);
   pixelDensity(1); // Ensure 1:1 pixel mapping for performance
   
   video = createCapture(VIDEO);
@@ -32,7 +32,7 @@ function setup() {
     console.log("Exiting sketch...");
     noLoop();
     video.pause();
-    window.close();
+    fetch('/shutdown').finally(() => window.close());
   });
 }
 
@@ -65,6 +65,6 @@ function keyPressed() {
   if (key === 'e' || key === 'E') {
     noLoop();
     video.pause();
-    window.close();
+    fetch('/shutdown').finally(() => window.close());
   }
 }
