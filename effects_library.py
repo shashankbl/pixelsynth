@@ -802,5 +802,209 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "21": {
+        "name": "Posterization",
+        "description": "Reduces the color palette to a few distinct bands (e.g., 4 colors). (Ref: Silk Screen)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls the number of color levels (2 to 8)
+  let levels = floor(map(paramA, 0, 1, 2, 8));
+  
+  // Calculate bin size for quantization
+  let binSize = 255 / (levels - 1);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    // Quantize each channel to the nearest level
+    pixels[i] = floor(r / 255 * (levels - 1) + 0.5) * binSize;
+    pixels[i + 1] = floor(g / 255 * (levels - 1) + 0.5) * binSize;
+    pixels[i + 2] = floor(b / 255 * (levels - 1) + 0.5) * binSize;
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "22": {
+        "name": "Heatmap Mapping",
+        "description": "Maps grayscale brightness to a blue-green-red gradient. (Ref: Thermal Camera)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA shifts the color spectrum center
+  let shift = map(paramA, 0, 1, -50, 50);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    let bright = (r + g + b) / 3;
+    
+    let val = constrain(bright + shift, 0, 255);
+    let outR = 0, outG = 0, outB = 0;
+    
+    // Thermal gradient: Blue (cold) -> Green -> Red (hot)
+    if (val < 128) {
+      // Blue to Green
+      outR = 0;
+      outG = map(val, 0, 128, 0, 255);
+      outB = map(val, 0, 128, 255, 0);
+    } else {
+      // Green to Red
+      outR = map(val, 128, 255, 0, 255);
+      outG = map(val, 128, 255, 255, 0);
+      outB = 0;
+    }
+    
+    pixels[i] = outR;
+    pixels[i + 1] = outG;
+    pixels[i + 2] = outB;
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "23": {
+        "name": "Sepia Tone",
+        "description": "Applies a brown-orange tint to a desaturated image. (Ref: Old Photography)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls intensity
+  let amount = map(paramA, 0, 1, 0.5, 1.0);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    let tr = (r * 0.393) + (g * 0.769) + (b * 0.189);
+    let tg = (r * 0.349) + (g * 0.686) + (b * 0.168);
+    let tb = (r * 0.272) + (g * 0.534) + (b * 0.131);
+    
+    pixels[i] = lerp(r, constrain(tr, 0, 255), amount);
+    pixels[i + 1] = lerp(g, constrain(tg, 0, 255), amount);
+    pixels[i + 2] = lerp(b, constrain(tb, 0, 255), amount);
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "24": {
+        "name": "Duotone",
+        "description": "Maps shadows to one specific color and highlights to another. (Ref: Spotify Wraps)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // Define colors: Deep Purple (Shadows) -> Lime Green (Highlights)
+  let r1 = 50, g1 = 0, b1 = 150;
+  let r2 = 200, g2 = 255, b2 = 50;
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let bright = (video.pixels[i] + video.pixels[i+1] + video.pixels[i+2]) / 3;
+    let t = bright / 255;
+    
+    pixels[i] = r1 + (r2 - r1) * t;
+    pixels[i + 1] = g1 + (g2 - g1) * t;
+    pixels[i + 2] = b1 + (b2 - b1) * t;
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "25": {
+        "name": "Inverted Luma",
+        "description": "Inverts brightness while keeping hue intact. (Ref: Negative Film)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i] / 255;
+    let g = video.pixels[i + 1] / 255;
+    let b = video.pixels[i + 2] / 255;
+    
+    let max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if(max == min){ h = s = 0; } 
+    else {
+        let d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch(max){
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+    
+    // Invert Lightness
+    l = 1 - l;
+    
+    let r1, g1, b1;
+    if(s === 0){ r1 = g1 = b1 = l; } 
+    else {
+        let hue2rgb = function(p, q, t){
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return p + (q - p) * 6 * t;
+            if(t < 1/2) return q;
+            if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        }
+        let q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        let p = 2 * l - q;
+        r1 = hue2rgb(p, q, h + 1/3);
+        g1 = hue2rgb(p, q, h);
+        b1 = hue2rgb(p, q, h - 1/3);
+    }
+    
+    pixels[i] = r1 * 255;
+    pixels[i + 1] = g1 * 255;
+    pixels[i + 2] = b1 * 255;
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "26": {
+        "name": "Threshold",
+        "description": "Converts image to strict black and white based on a cutoff. (Ref: Photocopy)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls the threshold level
+  let thresh = map(paramA, 0, 1, 0, 255);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let bright = (video.pixels[i] + video.pixels[i+1] + video.pixels[i+2]) / 3;
+    let val = (bright > thresh) ? 255 : 0;
+    pixels[i] = pixels[i+1] = pixels[i+2] = val;
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
     }
 }

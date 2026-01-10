@@ -19,6 +19,21 @@ This project acts as a template engine. It allows you to select an artistic effe
 10. **Triangle Mesh**: Divides the screen into equilateral triangles filled with average color.
 11. **RGB Split Grid**: Displays R, G, and B channels as separate sub-pixels side-by-side.
 12. **Voronoi Stained Glass**: Cells grow from random seeds, colored by the underlying pixel.
+13. **Delaunay Triangulation**: Connects random points to form triangles, colored by the centroid.
+14. **Quantized Dot Matrix**: Fixed-size dots that turn on/off based on a brightness threshold.
+15. **Concentric Circles**: The image is constructed from concentric rings of varying colors.
+16. **Brick Wall**: Staggered rectangles filled with the average color of that region.
+17. **Sine Wave Modulation**: Rows of sine waves where amplitude is driven by pixel brightness.
+18. **Binary Noise**: Random black/white pixels; probability of white is tied to source brightness.
+19. **Adaptive Quadtree**: Recursively divides squares into smaller squares only in areas of high contrast.
+20. **Solarization**: Inverts pixel values only above a certain brightness threshold.
+21. **Posterization**: Reduces the color palette to a few distinct bands.
+22. **Heatmap Mapping**: Maps grayscale brightness to a blue-green-red gradient.
+23. **Sepia Tone**: Applies a brown-orange tint to a desaturated image.
+24. **Duotone**: Maps shadows to one specific color and highlights to another.
+25. **Inverted Luma**: Inverts brightness while keeping hue intact.
+26. **Threshold**: Converts image to strict black and white based on a cutoff.
+
 
 ## How to Use
 

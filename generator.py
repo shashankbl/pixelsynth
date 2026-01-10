@@ -64,7 +64,7 @@ def main():
     for key, effect in EFFECTS.items():
         print(f"[{key}] {effect['name']} - {effect['description']}")
     
-    choice = input("\nEnter choice (1-20): ").strip()
+    choice = input("\nEnter choice (1-26): ").strip()
     
     if choice not in EFFECTS:
         print("Invalid selection. Exiting.")
