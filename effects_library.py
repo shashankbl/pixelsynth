@@ -1006,5 +1006,142 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "27": {
+        "name": "Bit-Crush Color",
+        "description": "Reduces color depth (e.g., 3-bit color) for a retro look. (Ref: Gameboy)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls bit depth (1 to 8 bits)
+  let bits = floor(map(paramA, 0, 1, 1, 8));
+  let factor = 255 / (pow(2, bits) - 1);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    pixels[i] = floor(r / factor) * factor;
+    pixels[i + 1] = floor(g / factor) * factor;
+    pixels[i + 2] = floor(b / factor) * factor;
+    pixels[i + 3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "28": {
+        "name": "Color Isolation",
+        "description": "Turns the image grayscale except for one specific hue (e.g., keep only red). (Ref: Sin City)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls target hue (0-360)
+  let targetHue = map(paramA, 0, 1, 0, 360);
+  let threshold = 30; // Hue tolerance
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    // Convert RGB to Hue
+    let rN = r/255, gN = g/255, bN = b/255;
+    let max = Math.max(rN, gN, bN), min = Math.min(rN, gN, bN);
+    let h = 0;
+
+    if (max !== min) {
+      let d = max - min;
+      switch(max) {
+        case rN: h = (gN - bN) / d + (gN < bN ? 6 : 0); break;
+        case gN: h = (bN - rN) / d + 2; break;
+        case bN: h = (rN - gN) / d + 4; break;
+      }
+      h *= 60;
+    }
+
+    // Calculate distance handling 360 wrap-around
+    let dist = Math.abs(h - targetHue);
+    if (dist > 180) dist = 360 - dist;
+
+    if (dist < threshold) {
+      pixels[i] = r;
+      pixels[i+1] = g;
+      pixels[i+2] = b;
+    } else {
+      let gray = (r + g + b) / 3;
+      pixels[i] = pixels[i+1] = pixels[i+2] = gray;
+    }
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "29": {
+        "name": "Luma Keying",
+        "description": "Makes pixels transparent if they are too bright/dark (green screen effect). (Ref: Chroma Key)",
+        "global_vars": "",
+        "draw_loop": """
+  clear(); // Clear canvas to transparent
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls brightness threshold
+  let thresh = map(paramA, 0, 1, 0, 255);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    let bright = (r + g + b) / 3;
+    
+    pixels[i] = r;
+    pixels[i+1] = g;
+    pixels[i+2] = b;
+    
+    // If brighter than threshold, make transparent
+    pixels[i+3] = (bright > thresh) ? 0 : 255;
+  }
+  updatePixels();
+"""
+    },
+    "30": {
+        "name": "False Color",
+        "description": "Swaps RGB channels (e.g., Red becomes Blue). (Ref: Infrared Photography)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA selects channel permutation (0-5)
+  let mode = floor(map(paramA, 0, 1, 0, 6));
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i + 1];
+    let b = video.pixels[i + 2];
+    
+    let newR = r, newG = g, newB = b;
+    
+    if (mode === 1) { newR = r; newG = b; newB = g; }
+    else if (mode === 2) { newR = g; newG = r; newB = b; }
+    else if (mode === 3) { newR = g; newG = b; newB = r; }
+    else if (mode === 4) { newR = b; newG = r; newB = g; }
+    else if (mode === 5) { newR = b; newG = g; newB = r; }
+    
+    pixels[i] = newR;
+    pixels[i+1] = newG;
+    pixels[i+2] = newB;
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
     }
 }

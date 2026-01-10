@@ -33,6 +33,10 @@ This project acts as a template engine. It allows you to select an artistic effe
 24. **Duotone**: Maps shadows to one specific color and highlights to another.
 25. **Inverted Luma**: Inverts brightness while keeping hue intact.
 26. **Threshold**: Converts image to strict black and white based on a cutoff.
+27. **Bit-Crush Color**: Reduces color depth (e.g., 3-bit color) for a retro look.
+28. **Color Isolation**: Turns the image grayscale except for one specific hue.
+29. **Luma Keying**: Makes pixels transparent if they are too bright/dark.
+30. **False Color**: Swaps RGB channels (e.g., Red becomes Blue).
 
 
 ## How to Use
