@@ -3124,7 +3124,7 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
 """
     },
-    "90": {
+    "80": {
         "name": "Stipple",
         "description": "Random dots where density increases with darkness. (Ref: Pen & Ink)",
         "global_vars": "",
@@ -3148,6 +3148,369 @@ function drawQuadtree(x, y, w, h, threshold) {
       point(x, y);
     }
   }
+"""
+    },
+    "81": {
+        "name": "JPEG Artifacts",
+        "description": "Intentionally compresses blocks to create blocky noise. (Ref: Low Bandwidth)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls block size (8 to 32)
+  let blockSize = floor(map(paramA, 0, 1, 8, 32));
+  
+  for (let y = 0; y < height; y += blockSize) {
+    for (let x = 0; x < width; x += blockSize) {
+      // Sample color from center of block (Chroma subsampling simulation)
+      let cx = x + blockSize/2;
+      let cy = y + blockSize/2;
+      cx = constrain(cx, 0, width-1);
+      cy = constrain(cy, 0, height-1);
+      let cIdx = (floor(cx) + floor(cy) * width) * 4;
+      
+      let cr = video.pixels[cIdx];
+      let cg = video.pixels[cIdx+1];
+      let cb = video.pixels[cIdx+2];
+      
+      for (let by = 0; by < blockSize; by++) {
+        for (let bx = 0; bx < blockSize; bx++) {
+          let px = x + bx;
+          let py = y + by;
+          if (px >= width || py >= height) continue;
+          
+          let idx = (px + py * width) * 4;
+          
+          // Get original brightness (Luma)
+          let r = video.pixels[idx];
+          let g = video.pixels[idx+1];
+          let b = video.pixels[idx+2];
+          let luma = (r + g + b) / 3;
+          
+          // Apply block color but maintain original luma
+          let blockLuma = (cr + cg + cb) / 3;
+          let factor = luma / (blockLuma + 1); // Avoid div by zero
+          
+          pixels[idx] = constrain(cr * factor, 0, 255);
+          pixels[idx+1] = constrain(cg * factor, 0, 255);
+          pixels[idx+2] = constrain(cb * factor, 0, 255);
+          pixels[idx+3] = 255;
+        }
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "82": {
+        "name": "Data Moshing",
+        "description": "Freezes I-frames while moving P-frames (smearing movement). (Ref: Broken Codec)",
+        "global_vars": "let moshBuffer;",
+        "draw_loop": """
+  if (!moshBuffer || moshBuffer.width !== width) {
+    moshBuffer = createGraphics(width, height);
+    moshBuffer.image(video, 0, 0, width, height);
+  }
+  
+  video.loadPixels();
+  moshBuffer.loadPixels();
+  
+  // paramA controls blend amount (0.01 to 0.2)
+  let blendAmt = map(paramA, 0, 1, 0.01, 0.2);
+  
+  loadPixels();
+  
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let idx = (x + y * width) * 4;
+      
+      // Calculate brightness gradient from VIDEO (the "force")
+      let idxLeft = (x - 1 + y * width) * 4;
+      let idxRight = (x + 1 + y * width) * 4;
+      let idxUp = (x + (y - 1) * width) * 4;
+      let idxDown = (x + (y + 1) * width) * 4;
+      
+      let bLeft = (video.pixels[idxLeft] + video.pixels[idxLeft+1] + video.pixels[idxLeft+2]) / 3;
+      let bRight = (video.pixels[idxRight] + video.pixels[idxRight+1] + video.pixels[idxRight+2]) / 3;
+      let bUp = (video.pixels[idxUp] + video.pixels[idxUp+1] + video.pixels[idxUp+2]) / 3;
+      let bDown = (video.pixels[idxDown] + video.pixels[idxDown+1] + video.pixels[idxDown+2]) / 3;
+      
+      // Flow vector
+      let dx = (bRight - bLeft) * 0.1; 
+      let dy = (bDown - bUp) * 0.1;
+      
+      // Sample from OLD moshBuffer
+      let sx = Math.floor(constrain(x - dx, 0, width - 1));
+      let sy = Math.floor(constrain(y - dy, 0, height - 1));
+      let srcIdx = (sx + sy * width) * 4;
+      
+      // Blend old moved pixel with new video pixel
+      let r = lerp(moshBuffer.pixels[srcIdx], video.pixels[idx], blendAmt);
+      let g = lerp(moshBuffer.pixels[srcIdx+1], video.pixels[idx+1], blendAmt);
+      let b = lerp(moshBuffer.pixels[srcIdx+2], video.pixels[idx+2], blendAmt);
+      
+      pixels[idx] = r;
+      pixels[idx+1] = g;
+      pixels[idx+2] = b;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+  
+  // Update buffer for next frame
+  moshBuffer.image(get(), 0, 0);
+"""
+    },
+    "83": {
+        "name": "Scanlines",
+        "description": "Adds horizontal black lines that scroll slowly. (Ref: VHS Tape)",
+        "global_vars": "",
+        "draw_loop": """
+  image(video, 0, 0);
+  
+  // paramA controls line spacing
+  let spacing = floor(map(paramA, 0, 1, 4, 20));
+  let speed = 1;
+  let scroll = (frameCount * speed) % spacing;
+  
+  stroke(0, 150); // Semi-transparent black
+  strokeWeight(spacing / 2);
+  
+  for (let y = -spacing; y < height; y += spacing) {
+    line(0, y + scroll, width, y + scroll);
+  }
+"""
+    },
+    "84": {
+        "name": "Static Noise",
+        "description": "Adds random colored noise on top of the signal. (Ref: Bad Reception)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls noise amount
+  let amount = map(paramA, 0, 1, 0, 150);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i+1];
+    let b = video.pixels[i+2];
+    
+    // Add random colored noise
+    pixels[i] = constrain(r + random(-amount, amount), 0, 255);
+    pixels[i+1] = constrain(g + random(-amount, amount), 0, 255);
+    pixels[i+2] = constrain(b + random(-amount, amount), 0, 255);
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "85": {
+        "name": "Channel Shift",
+        "description": "Randomly offsets R, G, and B channels horizontally. (Ref: Glitch)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls max shift
+  let maxShift = map(paramA, 0, 1, 0, 20);
+  
+  // Random shift per frame
+  let rShift = floor(random(-maxShift, maxShift));
+  let gShift = floor(random(-maxShift, maxShift));
+  let bShift = floor(random(-maxShift, maxShift));
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      
+      // Calculate source indices with wrap
+      let rX = (x + rShift + width) % width;
+      let gX = (x + gShift + width) % width;
+      let bX = (x + bShift + width) % width;
+      
+      let rIdx = (rX + y * width) * 4;
+      let gIdx = (gX + y * width) * 4;
+      let bIdx = (bX + y * width) * 4;
+      
+      pixels[idx] = video.pixels[rIdx];
+      pixels[idx+1] = video.pixels[gIdx+1];
+      pixels[idx+2] = video.pixels[bIdx+2];
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "86": {
+        "name": "Vertical Hold",
+        "description": "Simulates the screen rolling vertically. (Ref: Old TV)",
+        "global_vars": "let vHoldY = 0;",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls roll speed
+  let speed = map(paramA, 0, 1, 0, 20);
+  
+  vHoldY = (vHoldY + speed) % height;
+  
+  // Draw image twice to simulate loop
+  image(video, 0, vHoldY);
+  image(video, 0, vHoldY - height);
+"""
+    },
+    "87": {
+        "name": "Block Scramble",
+        "description": "Randomly swaps rectangular chunks of the screen. (Ref: Corrupted File)",
+        "global_vars": "let bsBlocks = []; let bsLastTime = 0;",
+        "draw_loop": """
+  background(0);
+  
+  // paramA controls block size/count
+  let cols = floor(map(paramA, 0, 1, 2, 10));
+  let rows = cols;
+  let w = width / cols;
+  let h = height / rows;
+  
+  // Update shuffle every 0.5 seconds or so
+  if (millis() - bsLastTime > 500 || bsBlocks.length !== cols * rows) {
+    bsBlocks = [];
+    for(let i=0; i<cols*rows; i++) bsBlocks.push(i);
+    // Shuffle
+    for (let i = bsBlocks.length - 1; i > 0; i--) {
+      const j = floor(random(i + 1));
+      [bsBlocks[i], bsBlocks[j]] = [bsBlocks[j], bsBlocks[i]];
+    }
+    bsLastTime = millis();
+  }
+  
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      let idx = bsBlocks[x + y * cols];
+      let sx = (idx % cols) * w;
+      let sy = floor(idx / cols) * h;
+      
+      image(video, x * w, y * h, w, h, sx, sy, w, h);
+    }
+  }
+"""
+    },
+    "88": {
+        "name": "Color Banding",
+        "description": "Reduces gradients to harsh bands of color. (Ref: GIF Compression)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls number of bands (2 to 32)
+  let bands = floor(map(paramA, 0, 1, 2, 32));
+  let factor = 255 / (bands - 1);
+  
+  for (let i = 0; i < video.pixels.length; i += 4) {
+    let r = video.pixels[i];
+    let g = video.pixels[i+1];
+    let b = video.pixels[i+2];
+    
+    pixels[i] = floor(r / factor) * factor;
+    pixels[i+1] = floor(g / factor) * factor;
+    pixels[i+2] = floor(b / factor) * factor;
+    pixels[i+3] = 255;
+  }
+  updatePixels();
+"""
+    },
+    "89": {
+        "name": "Interlace Artifacts",
+        "description": "Draws even lines from current frame, odd lines from previous frame. (Ref: Broadcast)",
+        "global_vars": "let iaPrev;",
+        "draw_loop": """
+  if (!iaPrev || iaPrev.width !== width) {
+    iaPrev = createGraphics(width, height);
+    iaPrev.image(video, 0, 0, width, height);
+  }
+  
+  video.loadPixels();
+  iaPrev.loadPixels();
+  loadPixels();
+  
+  // paramA controls line height (blockiness)
+  let lineH = floor(map(paramA, 0, 1, 1, 10));
+  
+  for (let y = 0; y < height; y++) {
+    let isEven = floor(y / lineH) % 2 === 0;
+    
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      
+      if (isEven) {
+        // Current frame
+        pixels[idx] = video.pixels[idx];
+        pixels[idx+1] = video.pixels[idx+1];
+        pixels[idx+2] = video.pixels[idx+2];
+      } else {
+        // Previous frame
+        pixels[idx] = iaPrev.pixels[idx];
+        pixels[idx+1] = iaPrev.pixels[idx+1];
+        pixels[idx+2] = iaPrev.pixels[idx+2];
+      }
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+  
+  // Update prev
+  iaPrev.image(video, 0, 0, width, height);
+"""
+    },
+    "90": {
+        "name": "Sync Failure",
+        "description": "Bends the top of the image horizontally. (Ref: Signal Loss)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls distortion amount
+  let maxShift = map(paramA, 0, 1, 0, 100);
+  
+  for (let y = 0; y < height; y++) {
+    let xOffset = 0;
+    
+    // Only affect top 20% of screen
+    if (y < height * 0.2) {
+       // Exponential decay from top
+       let factor = map(y, 0, height * 0.2, 1, 0);
+       // Sine wave wobble
+       xOffset = sin(y * 0.05 + frameCount * 0.2) * maxShift * factor;
+       // Add some noise
+       xOffset += random(-5, 5) * factor;
+    }
+    
+    for (let x = 0; x < width; x++) {
+      let sx = floor(x - xOffset);
+      
+      // Wrap
+      sx = (sx + width) % width;
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (sx + y * width) * 4;
+      
+      pixels[destIdx] = video.pixels[srcIdx];
+      pixels[destIdx+1] = video.pixels[srcIdx+1];
+      pixels[destIdx+2] = video.pixels[srcIdx+2];
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
 """
     }
 }

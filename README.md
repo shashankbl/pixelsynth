@@ -87,6 +87,16 @@ This project acts as a template engine. It allows you to select an artistic effe
 78. **Paper Cutout**: Quantizes color and adds slight drop shadows to color blobs.
 79. **Triangle Halftone**: Maps pixel brightness to the size of triangles in a grid.
 80. **Stipple**: Random dots where density increases with darkness.
+81. **JPEG Artifacts**: Intentionally compresses blocks to create blocky noise.
+82. **Data Moshing**: Freezes I-frames while moving P-frames (smearing movement).
+83. **Scanlines**: Adds horizontal black lines that scroll slowly.
+84. **Static Noise**: Adds random colored noise on top of the signal.
+85. **Channel Shift**: Randomly offsets R, G, and B channels horizontally.
+86. **Vertical Hold**: Simulates the screen rolling vertically.
+87. **Block Scramble**: Randomly swaps rectangular chunks of the screen.
+88. **Color Banding**: Reduces gradients to harsh bands of color.
+89. **Interlace Artifacts**: Draws even lines from current frame, odd lines from previous frame.
+90. **Sync Failure**: Bends the top of the image horizontally.
 
 
 ## How to Use
