@@ -2971,5 +2971,122 @@ function drawQuadtree(x, y, w, h, threshold) {
     }
   }
 """
+    },
+    "76": {
+        "name": "Palette Knife",
+        "description": "Smears pixels horizontally based on brightness. (Ref: Abstract Art)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  noStroke();
+  
+  // paramA controls smear intensity
+  let maxSmear = map(paramA, 0, 1, 10, 100);
+  
+  for (let y = 0; y < height; y+=2) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      let bright = (r+g+b)/3;
+      
+      let smear = map(bright, 0, 255, 0, maxSmear);
+      
+      fill(r, g, b);
+      rect(x, y, smear, 2);
+      
+      x += floor(smear * 0.8); // Skip forward to create smear effect
+    }
+  }
+"""
+    },
+    "77": {
+        "name": "Blueprint",
+        "description": "Inverts to blue background with white edge lines. (Ref: Technical Drawing)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0, 50, 150); // Blueprint Blue
+  video.loadPixels();
+  stroke(255);
+  noFill();
+  
+  // Grid lines
+  stroke(255, 50);
+  for(let i=0; i<width; i+=50) line(i, 0, i, height);
+  for(let i=0; i<height; i+=50) line(0, i, width, i);
+  
+  stroke(255);
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 20, 100);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      let idxRight = ((x+1) + y * width) * 4;
+      let idxDown = (x + (y+1) * width) * 4;
+      
+      if (x < width-1 && y < height-1) {
+        let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2])/3;
+        let bR = (video.pixels[idxRight] + video.pixels[idxRight+1] + video.pixels[idxRight+2])/3;
+        let bD = (video.pixels[idxDown] + video.pixels[idxDown+1] + video.pixels[idxDown+2])/3;
+        
+        if (abs(b - bR) > thresh || abs(b - bD) > thresh) {
+           point(x, y);
+        }
+      }
+    }
+  }
+"""
+    },
+    "78": {
+        "name": "Paper Cutout",
+        "description": "Quantizes color and adds slight drop shadows to color blobs. (Ref: Collage)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls color levels
+  let levels = floor(map(paramA, 0, 1, 3, 8));
+  let bin = 255 / (levels-1);
+  let shadowOffset = 4;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      
+      // Quantize current pixel
+      let r = floor(video.pixels[idx] / 255 * (levels-1) + 0.5) * bin;
+      let g = floor(video.pixels[idx+1] / 255 * (levels-1) + 0.5) * bin;
+      let b = floor(video.pixels[idx+2] / 255 * (levels-1) + 0.5) * bin;
+      
+      // Check bottom-right neighbor for edge (Shadow)
+      let nx = x + shadowOffset;
+      let ny = y + shadowOffset;
+      let isShadow = false;
+      
+      if (nx < width && ny < height) {
+         let nIdx = (nx + ny * width) * 4;
+         let nr = floor(video.pixels[nIdx] / 255 * (levels-1) + 0.5) * bin;
+         let ng = floor(video.pixels[nIdx+1] / 255 * (levels-1) + 0.5) * bin;
+         let nb = floor(video.pixels[nIdx+2] / 255 * (levels-1) + 0.5) * bin;
+         
+         if (r !== nr || g !== ng || b !== nb) {
+           isShadow = true;
+         }
+      }
+      
+      if (isShadow) {
+        pixels[idx] = 0; pixels[idx+1] = 0; pixels[idx+2] = 0; pixels[idx+3] = 255;
+      } else {
+        pixels[idx] = r; pixels[idx+1] = g; pixels[idx+2] = b; pixels[idx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
     }
 }

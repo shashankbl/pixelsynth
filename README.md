@@ -82,6 +82,9 @@ This project acts as a template engine. It allows you to select an artistic effe
 73. **Ink Wash**: Converts to grayscale and simulates ink diffusion/bleeding.
 74. **Pastel**: Softens colors and adds a rough paper texture overlay.
 75. **Pencil Hatching**: Uses generated flow fields to direct pencil strokes along image contours.
+76. **Palette Knife**: Smears pixels horizontally based on brightness.
+77. **Blueprint**: Inverts to blue background with white edge lines.
+78. **Paper Cutout**: Quantizes color and adds slight drop shadows to color blobs.
 
 
 ## How to Use
