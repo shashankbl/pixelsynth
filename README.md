@@ -85,6 +85,8 @@ This project acts as a template engine. It allows you to select an artistic effe
 76. **Palette Knife**: Smears pixels horizontally based on brightness.
 77. **Blueprint**: Inverts to blue background with white edge lines.
 78. **Paper Cutout**: Quantizes color and adds slight drop shadows to color blobs.
+79. **Triangle Halftone**: Maps pixel brightness to the size of triangles in a grid.
+80. **Stipple**: Random dots where density increases with darkness.
 
 
 ## How to Use

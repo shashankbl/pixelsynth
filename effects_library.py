@@ -3088,5 +3088,66 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "89": {
+        "name": "Triangle Halftone",
+        "description": "Maps pixel brightness to the size of triangles in a grid. (Ref: Graphic Design)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  noStroke();
+  fill(0);
+  
+  // paramA controls grid size
+  let step = floor(map(paramA, 0, 1, 10, 30));
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      let bright = (r + g + b) / 3;
+      
+      // Map brightness to triangle size (Darker = larger)
+      let s = map(bright, 0, 255, step, 0);
+      
+      if (s > 2) {
+        push();
+        translate(x + step/2, y + step/2);
+        let h = s * sqrt(3) / 2;
+        triangle(0, -h/2, -s/2, h/2, s/2, h/2);
+        pop();
+      }
+    }
+  }
+"""
+    },
+    "90": {
+        "name": "Stipple",
+        "description": "Random dots where density increases with darkness. (Ref: Pen & Ink)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  stroke(0);
+  strokeWeight(1);
+  
+  // paramA controls density
+  let density = map(paramA, 0, 1, 1000, 10000);
+  
+  for (let i = 0; i < density; i++) {
+    let x = floor(random(width));
+    let y = floor(random(height));
+    let idx = (x + y * width) * 4;
+    let bright = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+    
+    // Inverse probability: Darker pixels = higher chance of dot
+    if (random(255) > bright) {
+      point(x, y);
+    }
+  }
+"""
     }
 }
