@@ -3089,7 +3089,7 @@ function drawQuadtree(x, y, w, h, threshold) {
   updatePixels();
 """
     },
-    "89": {
+    "79": {
         "name": "Triangle Halftone",
         "description": "Maps pixel brightness to the size of triangles in a grid. (Ref: Graphic Design)",
         "global_vars": "",
