@@ -4,7 +4,7 @@ A creative coding tool that uses Python to procedurally compile and generate int
 
 ### Gallery
 
-| <img src="assets/examples/ascii.gif" width="250" alt="ASCII Matrix"><br>**ASCII Matrix** | <img src="assets/examples/idx006_circhalftones.gif" width="250" alt="Circle halftones"><br>**Circle halftones** |
+| <img src="assets/examples/idx001_ASCII.gif" width="250" alt="ASCII Matrix"><br>**ASCII Matrix** | <img src="assets/examples/idx006_circhalftones.gif" width="250" alt="Circle halftones"><br>**Circle halftones** |
 | <img src="assets/examples/idx107_badcable.gif" width="250" alt="Bad Cable"><br>**Bad Cable** | <img src="assets/examples/idx004_kaleidoscope.gif" width="250" alt="Kaleidoscope"><br>**Kaleidoscope** |
 | <img src="assets/examples/idx105_gameboycamera.gif" width="250" alt="Gameboy Camera"><br>**Gameboy Camera** | <img src="assets/examples/idx009_hexmosaic.gif" width="250" alt="Hex Mosaic"><br>**Hex Mosaic** |
 
