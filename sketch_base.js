@@ -2,6 +2,7 @@ let video;
 let paramA = 0.0; // MouseX normalized (0.0 to 1.0)
 let paramB = 0.0; // MouseY normalized (0.0 to 1.0)
 let helpVisible = false;
+let isPaused = false;
 
 // [INJECTED GLOBAL VARIABLES START]
 {{GLOBAL_VARS}}
@@ -22,12 +23,16 @@ function setup() {
   btnSave.position(10, 10);
   btnSave.mousePressed(() => saveCanvas('pixelsynth_output', 'png'));
 
+  let btnPause = createButton('Pause');
+  btnPause.position(60, 10);
+  btnPause.mousePressed(togglePause);
+
   let btnHelp = createButton('Help');
-  btnHelp.position(60, 10);
+  btnHelp.position(110, 10);
   btnHelp.mousePressed(() => helpVisible = !helpVisible);
 
   let btnExit = createButton('Exit');
-  btnExit.position(110, 10);
+  btnExit.position(160, 10);
   btnExit.mousePressed(() => {
     console.log("Exiting sketch...");
     noLoop();
@@ -44,7 +49,11 @@ function draw() {
   paramB = constrain(mouseY / height, 0.0, 1.0);
 
   // [INJECTED DRAW LOOP LOGIC START]
-  {{DRAW_LOOP_LOGIC}}
+  push();
+  if (!isPaused) {
+    {{DRAW_LOOP_LOGIC}}
+  }
+  pop();
   // [INJECTED DRAW LOOP LOGIC END]
 
   if (helpVisible) {
@@ -54,13 +63,20 @@ function draw() {
     fill(255);
     textSize(16);
     textAlign(CENTER, CENTER);
-    text("Controls:\nMouse X/Y: Adjust Effect\n'S': Save Screenshot\n'H': Toggle Help\n'E': Exit", width / 2, height / 2);
+    text("Controls:\nMouse X/Y: Adjust Effect\n'S': Save Screenshot\n'P': Pause/Resume\n'H': Toggle Help\n'E': Exit", width / 2, height / 2);
     pop();
   }
 }
 
+function togglePause() {
+  isPaused = !isPaused;
+  if (isPaused) video.pause();
+  else video.loop();
+}
+
 function keyPressed() {
   if (key === 's' || key === 'S') saveCanvas('pixelsynth_output', 'png');
+  if (key === 'p' || key === 'P') togglePause();
   if (key === 'h' || key === 'H') helpVisible = !helpVisible;
   if (key === 'e' || key === 'E') {
     noLoop();
