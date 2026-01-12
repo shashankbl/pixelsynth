@@ -1,0 +1,8 @@
+title: PixelSynth
+description: A creative coding tool that uses Python to procedurally compile and generate interactive p5.js sketches.
+theme: jekyll-theme-slate
+markdown: kramdown
+plugins:
+  - jekyll-seo-tag
+exclude:
+  - output/
