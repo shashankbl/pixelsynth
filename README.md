@@ -146,7 +146,10 @@ This project acts as a template engine. It allows you to select an artistic effe
 ## How to Use
 
 1. **Generate a Sketch**
-   Run the generator script to choose an effect. The server will start automatically.
+   
+   - Run the generator script to choose an effect. The server will start automatically.
    ```bash
    python3 generator.py
    ```
+   - Enter the index of the effect to be applied to live web camera video
+   - Allow browser window to access live web camera video
