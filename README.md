@@ -97,6 +97,24 @@ This project acts as a template engine. It allows you to select an artistic effe
 88. **Color Banding**: Reduces gradients to harsh bands of color.
 89. **Interlace Artifacts**: Draws even lines from current frame, odd lines from previous frame.
 90. **Sync Failure**: Bends the top of the image horizontally.
+91. **Sobel Edge Detection**: Highlights areas of high contrast (standard outline).
+92. **Canny Edges**: Thinner, cleaner lines than Sobel.
+93. **Difference Edges**: Subtracts a blurred version of the image from the sharp one.
+94. **Neon Edges**: Edge detection colored by the original pixel hue.
+95. **Inverted Outline**: White background, black lines.
+96. **Topographic Lines**: Draws contour lines at specific brightness steps.
+97. **Flow Field Lines**: Lines follow the "gradient" of pixel brightness.
+98. **Wireframe**: Connects grid points if their brightness difference is high.
+99. **Text Rain**: Falling letters interact with the brightness of the video.
+100. **Binary Stream**: Replaces image with streaming 1s and 0s, green on black.
+101. **Shape Packing**: Packs non-overlapping circles into bright areas.
+102. **Cell Division**: Voronoi cells that split into two smaller cells when the underlying movement is detected.
+103. **Lichen Growth**: Diffusion-limited aggregation (DLA) where branches grow only on dark pixels.
+104. **Reaction-Diffusion**: Simulates chemical pattern formation (Gray-Scott model) seeded by image brightness.
+105. **Gameboy Camera**: Strict 4-color palette (Dark Green, Green, Light Green, White) with dithering.
+106. **Vector Display**: Detects edges and draws them as bright, glowing vector lines, ignoring fills.
+107. **Bad Cable**: Randomly drops the sync signal, causing the image to roll or shear horizontally.
+108. **Night Vision**: High contrast green monochrome with added film grain and a vignette.
 
 
 ## How to Use

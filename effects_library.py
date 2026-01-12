@@ -3512,5 +3512,992 @@ function drawQuadtree(x, y, w, h, threshold) {
   }
   updatePixels();
 """
+    },
+    "91": {
+        "name": "Sobel Edge Detection",
+        "description": "Highlights areas of high contrast (standard outline). (Ref: Computer Vision)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 20, 100);
+  
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      // Kernel indices
+      let i00 = ((x-1) + (y-1)*width)*4;
+      let i10 = (x     + (y-1)*width)*4;
+      let i20 = ((x+1) + (y-1)*width)*4;
+      let i01 = ((x-1) + y    *width)*4;
+      let i21 = ((x+1) + y    *width)*4;
+      let i02 = ((x-1) + (y+1)*width)*4;
+      let i12 = (x     + (y+1)*width)*4;
+      let i22 = ((x+1) + (y+1)*width)*4;
+      
+      // Grayscale values
+      let l00 = (video.pixels[i00] + video.pixels[i00+1] + video.pixels[i00+2]) / 3;
+      let l10 = (video.pixels[i10] + video.pixels[i10+1] + video.pixels[i10+2]) / 3;
+      let l20 = (video.pixels[i20] + video.pixels[i20+1] + video.pixels[i20+2]) / 3;
+      let l01 = (video.pixels[i01] + video.pixels[i01+1] + video.pixels[i01+2]) / 3;
+      let l21 = (video.pixels[i21] + video.pixels[i21+1] + video.pixels[i21+2]) / 3;
+      let l02 = (video.pixels[i02] + video.pixels[i02+1] + video.pixels[i02+2]) / 3;
+      let l12 = (video.pixels[i12] + video.pixels[i12+1] + video.pixels[i12+2]) / 3;
+      let l22 = (video.pixels[i22] + video.pixels[i22+1] + video.pixels[i22+2]) / 3;
+      
+      // Sobel Kernels
+      let gx = -l00 - 2*l01 - l02 + l20 + 2*l21 + l22;
+      let gy = -l00 - 2*l10 - l20 + l02 + 2*l12 + l22;
+      
+      let mag = sqrt(gx*gx + gy*gy);
+      
+      let val = (mag > thresh) ? mag : 0;
+      val = constrain(val, 0, 255);
+      
+      let idx = (x + y * width) * 4;
+      pixels[idx] = val;
+      pixels[idx+1] = val;
+      pixels[idx+2] = val;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "92": {
+        "name": "Canny Edges",
+        "description": "Thinner, cleaner lines than Sobel. (Ref: Line Art)",
+        "global_vars": "let cMag = null; let cDir = null;",
+        "draw_loop": """
+  if (!cMag || cMag.length !== width * height) {
+    cMag = new Float32Array(width * height);
+    cDir = new Uint8Array(width * height);
+  }
+  
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls low threshold
+  let lowThresh = map(paramA, 0, 1, 20, 100);
+  let highThresh = lowThresh * 2;
+  
+  // Pass 1: Sobel & Gradient Direction
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let i00 = ((x-1) + (y-1)*width)*4;
+      let i10 = (x     + (y-1)*width)*4;
+      let i20 = ((x+1) + (y-1)*width)*4;
+      let i01 = ((x-1) + y    *width)*4;
+      let i21 = ((x+1) + y    *width)*4;
+      let i02 = ((x-1) + (y+1)*width)*4;
+      let i12 = (x     + (y+1)*width)*4;
+      let i22 = ((x+1) + (y+1)*width)*4;
+      
+      let l00 = (video.pixels[i00] + video.pixels[i00+1] + video.pixels[i00+2]) / 3;
+      let l10 = (video.pixels[i10] + video.pixels[i10+1] + video.pixels[i10+2]) / 3;
+      let l20 = (video.pixels[i20] + video.pixels[i20+1] + video.pixels[i20+2]) / 3;
+      let l01 = (video.pixels[i01] + video.pixels[i01+1] + video.pixels[i01+2]) / 3;
+      let l21 = (video.pixels[i21] + video.pixels[i21+1] + video.pixels[i21+2]) / 3;
+      let l02 = (video.pixels[i02] + video.pixels[i02+1] + video.pixels[i02+2]) / 3;
+      let l12 = (video.pixels[i12] + video.pixels[i12+1] + video.pixels[i12+2]) / 3;
+      let l22 = (video.pixels[i22] + video.pixels[i22+1] + video.pixels[i22+2]) / 3;
+      
+      let gx = -l00 - 2*l01 - l02 + l20 + 2*l21 + l22;
+      let gy = -l00 - 2*l10 - l20 + l02 + 2*l12 + l22;
+      
+      let mag = sqrt(gx*gx + gy*gy);
+      let idx = x + y * width;
+      cMag[idx] = mag;
+      
+      // Direction quantization (0, 45, 90, 135)
+      let angle = atan2(gy, gx) * 180 / PI;
+      if (angle < 0) angle += 180;
+      
+      if ((angle >= 0 && angle < 22.5) || (angle >= 157.5 && angle <= 180)) cDir[idx] = 0; // Horizontal
+      else if (angle >= 22.5 && angle < 67.5) cDir[idx] = 45; // Diagonal /
+      else if (angle >= 67.5 && angle < 112.5) cDir[idx] = 90; // Vertical
+      else if (angle >= 112.5 && angle < 157.5) cDir[idx] = 135; // Diagonal Left
+    }
+  }
+  
+  // Pass 2: Non-maximum Suppression
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      let idx = x + y * width;
+      let mag = cMag[idx];
+      
+      if (mag < lowThresh) continue; // Skip weak pixels
+      
+      let dir = cDir[idx];
+      let m1 = 0, m2 = 0;
+      
+      if (dir === 0) { // Horizontal, check Left/Right
+        m1 = cMag[idx - 1]; m2 = cMag[idx + 1];
+      } else if (dir === 90) { // Vertical, check Up/Down
+        m1 = cMag[idx - width]; m2 = cMag[idx + width];
+      } else if (dir === 45) { // Diagonal 45 (TL-BR), check TL/BR
+        m1 = cMag[idx - width - 1]; m2 = cMag[idx + width + 1];
+      } else { // Diagonal 135 (TR-BL), check TR/BL
+        m1 = cMag[idx - width + 1]; m2 = cMag[idx + width - 1];
+      }
+      
+      // If local max, keep it
+      if (mag >= m1 && mag >= m2) {
+         let val = (mag > highThresh) ? 255 : mag; // Simple hysteresis approx
+         let pIdx = idx * 4;
+         pixels[pIdx] = val;
+         pixels[pIdx+1] = val;
+         pixels[pIdx+2] = val;
+         pixels[pIdx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "93": {
+        "name": "Difference Edges",
+        "description": "Subtracts a blurred version of the image from the sharp one. (Ref: High Pass Filter)",
+        "global_vars": "let diffBuffer;",
+        "draw_loop": """
+  if (!diffBuffer || diffBuffer.width !== floor(width/8)) {
+    diffBuffer = createGraphics(floor(width/8), floor(height/8));
+    diffBuffer.pixelDensity(1);
+  }
+  
+  background(0);
+  
+  // 1. Blur by downscaling
+  diffBuffer.image(video, 0, 0, diffBuffer.width, diffBuffer.height);
+  
+  // 2. Draw blurred base
+  image(diffBuffer, 0, 0, width, height);
+  
+  // 3. Subtract sharp video
+  blendMode(DIFFERENCE);
+  image(video, 0, 0);
+  blendMode(BLEND);
+  
+  // 4. Boost brightness
+  loadPixels();
+  for (let i = 0; i < pixels.length; i += 4) {
+    pixels[i] *= 4;
+    pixels[i+1] *= 4;
+    pixels[i+2] *= 4;
+  }
+  updatePixels();
+"""
+    },
+    "94": {
+        "name": "Neon Edges",
+        "description": "Edge detection colored by the original pixel hue. (Ref: Neon Sign)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 20, 100);
+  
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      let idx = (x + y * width) * 4;
+      let idxR = ((x + 1) + y * width) * 4;
+      let idxD = (x + (y + 1) * width) * 4;
+      
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      
+      // Calculate color distance to neighbors
+      let d1 = dist(r, g, b, video.pixels[idxR], video.pixels[idxR+1], video.pixels[idxR+2]);
+      let d2 = dist(r, g, b, video.pixels[idxD], video.pixels[idxD+1], video.pixels[idxD+2]);
+      
+      if (d1 + d2 > thresh) {
+        pixels[idx] = r; pixels[idx+1] = g; pixels[idx+2] = b; pixels[idx+3] = 255;
+      } else {
+        pixels[idx] = 0; pixels[idx+1] = 0; pixels[idx+2] = 0; pixels[idx+3] = 255;
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "95": {
+        "name": "Inverted Outline",
+        "description": "White background, black lines. (Ref: Coloring Book)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls threshold
+  let thresh = map(paramA, 0, 1, 15, 80);
+  
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      let idx = (x + y * width) * 4;
+      let idxR = ((x + 1) + y * width) * 4;
+      let idxD = (x + (y + 1) * width) * 4;
+      
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      let bR = (video.pixels[idxR] + video.pixels[idxR+1] + video.pixels[idxR+2]) / 3;
+      let bD = (video.pixels[idxD] + video.pixels[idxD+1] + video.pixels[idxD+2]) / 3;
+      
+      let diff = abs(b - bR) + abs(b - bD);
+      
+      if (diff > thresh) {
+        pixels[idx] = 0; pixels[idx+1] = 0; pixels[idx+2] = 0;
+      } else {
+        pixels[idx] = 255; pixels[idx+1] = 255; pixels[idx+2] = 255;
+      }
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "96": {
+        "name": "Topographic Lines",
+        "description": "Draws contour lines at specific brightness steps. (Ref: Map)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls number of contour levels
+  let levels = floor(map(paramA, 0, 1, 5, 20));
+  let step = 255 / levels;
+  
+  for (let y = 0; y < height - 1; y++) {
+    for (let x = 0; x < width - 1; x++) {
+      let idx = (x + y * width) * 4;
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      
+      // Check right neighbor
+      let idxR = ((x+1) + y * width) * 4;
+      let bR = (video.pixels[idxR] + video.pixels[idxR+1] + video.pixels[idxR+2]) / 3;
+      
+      // Check bottom neighbor
+      let idxD = (x + (y+1) * width) * 4;
+      let bD = (video.pixels[idxD] + video.pixels[idxD+1] + video.pixels[idxD+2]) / 3;
+      
+      // If neighbors fall in different quantization buckets, draw a contour line (black)
+      if (floor(b / step) !== floor(bR / step) || floor(b / step) !== floor(bD / step)) {
+         pixels[idx] = 0; pixels[idx+1] = 0; pixels[idx+2] = 0;
+      } else {
+         pixels[idx] = 255; pixels[idx+1] = 255; pixels[idx+2] = 255;
+      }
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "97": {
+        "name": "Flow Field Lines",
+        "description": "Lines follow the 'gradient' of pixel brightness. (Ref: Magnetic Fields)",
+        "global_vars": "",
+        "draw_loop": """
+  background(255);
+  video.loadPixels();
+  stroke(0);
+  strokeWeight(1);
+  
+  // paramA controls grid density
+  let step = floor(map(paramA, 0, 1, 10, 30));
+  
+  for (let y = step; y < height - step; y += step) {
+    for (let x = step; x < width - step; x += step) {
+      // Calculate gradient
+      let idxL = ((x-1) + y * width) * 4;
+      let idxR = ((x+1) + y * width) * 4;
+      let idxU = (x + (y-1) * width) * 4;
+      let idxD = (x + (y+1) * width) * 4;
+      
+      let bL = (video.pixels[idxL] + video.pixels[idxL+1] + video.pixels[idxL+2]) / 3;
+      let bR = (video.pixels[idxR] + video.pixels[idxR+1] + video.pixels[idxR+2]) / 3;
+      let bU = (video.pixels[idxU] + video.pixels[idxU+1] + video.pixels[idxU+2]) / 3;
+      let bD = (video.pixels[idxD] + video.pixels[idxD+1] + video.pixels[idxD+2]) / 3;
+      
+      // Determine angle based on brightness slope
+      let dx = bR - bL;
+      let dy = bD - bU;
+      let angle = atan2(dy, dx);
+      
+      push();
+      translate(x, y);
+      rotate(angle);
+      line(-step/2, 0, step/2, 0);
+      pop();
+    }
+  }
+"""
+    },
+    "98": {
+        "name": "Wireframe",
+        "description": "Connects grid points if their brightness difference is high. (Ref: 3D Model)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  stroke(0, 255, 0); // Retro green
+  strokeWeight(1);
+  
+  // paramA controls grid size
+  let step = floor(map(paramA, 0, 1, 5, 20));
+  let thresh = 30;
+  
+  for (let y = 0; y < height - step; y += step) {
+    for (let x = 0; x < width - step; x += step) {
+      let idx = (x + y * width) * 4;
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      
+      // Check Right
+      let idxR = ((x+step) + y * width) * 4;
+      let bR = (video.pixels[idxR] + video.pixels[idxR+1] + video.pixels[idxR+2]) / 3;
+      
+      // Check Down
+      let idxD = (x + (y+step) * width) * 4;
+      let bD = (video.pixels[idxD] + video.pixels[idxD+1] + video.pixels[idxD+2]) / 3;
+      
+      // Connect if high contrast (Edge wireframe)
+      if (abs(b - bR) > thresh) line(x, y, x + step, y);
+      if (abs(b - bD) > thresh) line(x, y, x, y + step);
+    }
+  }
+"""
+    },
+    "99": {
+        "name": "Text Rain",
+        "description": "Falling letters interact with the brightness of the video. (Ref: Interactive Install)",
+        "global_vars": "let rainDrops = [];",
+        "draw_loop": """
+  background(255);
+  
+  // Draw faint video for reference
+  tint(255, 100);
+  image(video, 0, 0);
+  noTint();
+  
+  video.loadPixels();
+  
+  // Initialize drops
+  let spacing = 10;
+  if (rainDrops.length === 0) {
+    for (let x = 0; x < width; x += spacing) {
+      rainDrops.push({
+        x: x,
+        y: random(-height, 0),
+        speed: random(2, 5),
+        char: String.fromCharCode(65 + floor(random(26)))
+      });
+    }
+  }
+  
+  fill(0);
+  textSize(12);
+  textAlign(CENTER);
+  
+  // paramA controls threshold for "solid" pixels
+  let thresh = map(paramA, 0, 1, 50, 150);
+  
+  for (let d of rainDrops) {
+    d.y += d.speed;
+    
+    // Check collision with dark pixels (User silhouette)
+    let checkY = floor(d.y);
+    
+    // If inside screen
+    if (checkY >= 0 && checkY < height) {
+      let idx = (floor(d.x) + checkY * width) * 4;
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      
+      // If dark (silhouette), push up until it sits on top
+      while (b < thresh && d.y > 0) {
+        d.y -= 1;
+        checkY = floor(d.y);
+        if (checkY < 0) break;
+        
+        idx = (floor(d.x) + checkY * width) * 4;
+        b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      }
+    }
+    
+    if (d.y > height) d.y = -20; // Reset to top
+    
+    text(d.char, d.x, d.y);
+  }
+"""
+    },
+    "100": {
+        "name": "Binary Stream",
+        "description": "Replaces image with streaming 1s and 0s, green on black. (Ref: The Matrix)",
+        "global_vars": "let mStreams = [];",
+        "draw_loop": """
+  background(0, 40); // Fade trail
+  video.loadPixels();
+  
+  let fontSize = 14;
+  let cols = floor(width / fontSize);
+  
+  if (mStreams.length !== cols) {
+    mStreams = new Array(cols).fill(0).map(() => random(-height, 0));
+  }
+  
+  textSize(fontSize);
+  
+  for (let i = 0; i < cols; i++) {
+    let x = i * fontSize;
+    let y = mStreams[i];
+    
+    let vy = floor(y);
+    if (vy >= 0 && vy < height) {
+       let idx = (x + vy * width) * 4;
+       let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+       
+       // Green characters, opacity based on brightness
+       fill(0, 255, 0, b);
+       let char = (random(1) > 0.5) ? "1" : "0";
+       text(char, x, y);
+    }
+    
+    mStreams[i] += fontSize; // Move down
+    if (mStreams[i] > height) mStreams[i] = random(-100, 0);
+  }
+"""
+    },
+    "101": {
+        "name": "Shape Packing",
+        "description": "Packs non-overlapping circles into bright areas. (Ref: Circle Packing)",
+        "global_vars": "let packCircles = [];",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  
+  // Reset if full
+  if (packCircles.length > 2000) packCircles = [];
+  
+  // Attempt to add circles
+  let attempts = 50;
+  for (let i = 0; i < attempts; i++) {
+    let x = random(width);
+    let y = random(height);
+    
+    let idx = (floor(x) + floor(y) * width) * 4;
+    let r = video.pixels[idx];
+    let g = video.pixels[idx+1];
+    let b = video.pixels[idx+2];
+    let bright = (r+g+b)/3;
+    
+    if (bright > 30) {
+      let closestD = 50; // Max radius
+      for (let c of packCircles) {
+        let d = dist(x, y, c.x, c.y) - c.rad;
+        if (d < closestD) closestD = d;
+        if (closestD < 2) break;
+      }
+      
+      if (closestD > 2) {
+        packCircles.push({x: x, y: y, rad: closestD, c: [r,g,b]});
+      }
+    }
+  }
+  
+  noStroke();
+  for (let c of packCircles) {
+    fill(c.c[0], c.c[1], c.c[2]);
+    ellipse(c.x, c.y, c.rad * 2);
+  }
+"""
+    },
+    "102": {
+        "name": "Cell Division",
+        "description": "Voronoi cells that split into two smaller cells when the underlying movement is detected. (Ref: Mitosis)",
+        "global_vars": "let cdSeeds = []; let cdPrev;",
+        "draw_loop": """
+  if (!cdPrev || cdPrev.width !== width) {
+    cdPrev = createGraphics(width, height);
+    cdPrev.image(video, 0, 0, width, height);
+    cdSeeds = [];
+    for(let i=0; i<10; i++) cdSeeds.push({x: random(width), y: random(height)});
+  }
+  
+  video.loadPixels();
+  cdPrev.loadPixels();
+  
+  // 1. Update Seeds (Split on motion)
+  let motionThresh = map(paramA, 0, 1, 20, 100);
+  let maxSeeds = 100;
+  
+  for (let i = cdSeeds.length - 1; i >= 0; i--) {
+    let s = cdSeeds[i];
+    let x = floor(constrain(s.x, 0, width-1));
+    let y = floor(constrain(s.y, 0, height-1));
+    let idx = (x + y * width) * 4;
+    
+    let r = video.pixels[idx];
+    let g = video.pixels[idx+1];
+    let b = video.pixels[idx+2];
+    let pr = cdPrev.pixels[idx];
+    let pg = cdPrev.pixels[idx+1];
+    let pb = cdPrev.pixels[idx+2];
+    
+    let diff = abs(r-pr) + abs(g-pg) + abs(b-pb);
+    
+    // Move slightly
+    s.x += random(-1, 1);
+    s.y += random(-1, 1);
+    
+    // Split
+    if (diff > motionThresh && cdSeeds.length < maxSeeds) {
+      cdSeeds.push({x: s.x + random(-10, 10), y: s.y + random(-10, 10)});
+    }
+  }
+  
+  // Randomly kill seeds to prevent saturation
+  if (cdSeeds.length > maxSeeds || (cdSeeds.length > 10 && random(1) < 0.05)) {
+    cdSeeds.splice(floor(random(cdSeeds.length)), 1);
+  }
+  
+  // 2. Draw Voronoi (Pixel approximation)
+  loadPixels();
+  let step = 4; 
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let minDist = Infinity;
+      let closest = 0;
+      
+      for (let i = 0; i < cdSeeds.length; i++) {
+        let d = (x - cdSeeds[i].x)**2 + (y - cdSeeds[i].y)**2;
+        if (d < minDist) { minDist = d; closest = i; }
+      }
+      
+      // Color based on video at seed location
+      let s = cdSeeds[closest];
+      let sx = floor(constrain(s.x, 0, width-1));
+      let sy = floor(constrain(s.y, 0, height-1));
+      let idx = (sx + sy * width) * 4;
+      
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      
+      for(let dy=0; dy<step; dy++){
+         for(let dx=0; dx<step; dx++){
+            let pIdx = ((x+dx) + (y+dy)*width)*4;
+            if (pIdx < pixels.length) {
+                pixels[pIdx] = r; pixels[pIdx+1] = g; pixels[pIdx+2] = b; pixels[pIdx+3] = 255;
+            }
+         }
+      }
+    }
+  }
+  updatePixels();
+  
+  // Draw cell centers
+  for (let s of cdSeeds) {
+    fill(255);
+    noStroke();
+    ellipse(s.x, s.y, 4, 4);
+  }
+  
+  cdPrev.image(video, 0, 0, width, height);
+"""
+    },
+    "103": {
+        "name": "Lichen Growth",
+        "description": "Diffusion-limited aggregation (DLA) where branches grow only on dark pixels. (Ref: Moss)",
+        "global_vars": "let lichenGrid = null;",
+        "draw_loop": """
+  if (!lichenGrid || lichenGrid.length !== width * height) {
+    lichenGrid = new Uint8Array(width * height); // 0 = empty, 1 = lichen
+    // Seed center
+    lichenGrid[floor(width/2) + floor(height/2) * width] = 1;
+  }
+  
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // Draw existing lichen
+  for (let i = 0; i < lichenGrid.length; i++) {
+    if (lichenGrid[i] === 1) {
+      let idx = i * 4;
+      // Greenish color mixed with video
+      pixels[idx] = video.pixels[idx];
+      pixels[idx+1] = min(255, video.pixels[idx+1] + 100);
+      pixels[idx+2] = video.pixels[idx+2];
+      pixels[idx+3] = 255;
+    } else {
+      let idx = i * 4;
+      pixels[idx] = video.pixels[idx] * 0.3;
+      pixels[idx+1] = video.pixels[idx+1] * 0.3;
+      pixels[idx+2] = video.pixels[idx+2] * 0.3;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+  
+  // Simulation steps per frame
+  let steps = 10000;
+  let growthThresh = map(paramA, 0, 1, 50, 150); // Darker pixels allow growth
+  
+  for (let n = 0; n < steps; n++) {
+    // Spawn walker
+    let wx = floor(random(width));
+    let wy = floor(random(height));
+    
+    // Walk
+    let maxWalk = 50;
+    for (let w = 0; w < maxWalk; w++) {
+      wx += floor(random(-2, 2));
+      wy += floor(random(-2, 2));
+      wx = constrain(wx, 1, width-2);
+      wy = constrain(wy, 1, height-2);
+      
+      let idx = wx + wy * width;
+      
+      // Check neighbors for lichen
+      if (lichenGrid[idx] === 0) {
+        if (lichenGrid[idx-1] || lichenGrid[idx+1] || lichenGrid[idx-width] || lichenGrid[idx+width]) {
+           // Found neighbor, check if environment (video) allows growth
+           let pIdx = idx * 4;
+           let bright = (video.pixels[pIdx] + video.pixels[pIdx+1] + video.pixels[pIdx+2]) / 3;
+           
+           if (bright < growthThresh) {
+             lichenGrid[idx] = 1;
+             break; // Stuck
+           }
+        }
+      }
+    }
+  }
+  
+  // Random decay (lichen dies in bright light)
+  for (let i = 0; i < 10000; i++) {
+    let rx = floor(random(width));
+    let ry = floor(random(height));
+    let idx = rx + ry * width;
+    if (lichenGrid[idx] === 1) {
+       let pIdx = idx * 4;
+       let bright = (video.pixels[pIdx] + video.pixels[pIdx+1] + video.pixels[pIdx+2]) / 3;
+       if (bright > growthThresh + 20) lichenGrid[idx] = 0;
+    }
+  }
+"""
+    },
+    "104": {
+        "name": "Reaction-Diffusion",
+        "description": "Simulates chemical pattern formation (Gray-Scott model) seeded by image brightness. (Ref: Coral Textures)",
+        "global_vars": "let rdGrid = []; let rdNext = []; let rdW = 100; let rdH = 100;",
+        "draw_loop": """
+  // Initialize low-res grid for performance
+  if (rdGrid.length !== rdW * rdH) {
+    rdGrid = []; rdNext = [];
+    for (let i = 0; i < rdW * rdH; i++) {
+      rdGrid.push({a: 1, b: 0});
+      rdNext.push({a: 1, b: 0});
+    }
+  }
+  
+  video.loadPixels();
+  
+  // Parameters (Gray-Scott)
+  let dA = 1.0;
+  let dB = 0.5;
+  let feed = 0.055;
+  let k = 0.062;
+  
+  // Interactive feed/kill based on paramA
+  feed = map(paramA, 0, 1, 0.01, 0.1);
+  
+  // Seed B from video brightness
+  for (let y = 0; y < rdH; y++) {
+    for (let x = 0; x < rdW; x++) {
+      // Map low-res coord to video coord
+      let vx = floor(map(x, 0, rdW, 0, width));
+      let vy = floor(map(y, 0, rdH, 0, height));
+      let vIdx = (vx + vy * width) * 4;
+      let bright = (video.pixels[vIdx] + video.pixels[vIdx+1] + video.pixels[vIdx+2]) / 3;
+      
+      let idx = x + y * rdW;
+      if (bright > 200) rdGrid[idx].b = 1; // Add chemical B in bright areas
+    }
+  }
+  
+  // Simulation Step
+  for (let x = 1; x < rdW - 1; x++) {
+    for (let y = 1; y < rdH - 1; y++) {
+      let i = x + y * rdW;
+      
+      let a = rdGrid[i].a;
+      let b = rdGrid[i].b;
+      
+      let lapA = 
+        (rdGrid[i-1].a + rdGrid[i+1].a + rdGrid[i-rdW].a + rdGrid[i+rdW].a) * 0.2 +
+        (rdGrid[i-rdW-1].a + rdGrid[i-rdW+1].a + rdGrid[i+rdW-1].a + rdGrid[i+rdW+1].a) * 0.05 -
+        a;
+        
+      let lapB = 
+        (rdGrid[i-1].b + rdGrid[i+1].b + rdGrid[i-rdW].b + rdGrid[i+rdW].b) * 0.2 +
+        (rdGrid[i-rdW-1].b + rdGrid[i-rdW+1].b + rdGrid[i+rdW-1].b + rdGrid[i+rdW+1].b) * 0.05 -
+        b;
+
+      let nextA = a + (dA * lapA - a * b * b + feed * (1 - a));
+      let nextB = b + (dB * lapB + a * b * b - (k + feed) * b);
+      
+      rdNext[i].a = constrain(nextA, 0, 1);
+      rdNext[i].b = constrain(nextB, 0, 1);
+    }
+  }
+  
+  // Swap
+  let temp = rdGrid;
+  rdGrid = rdNext;
+  rdNext = temp;
+  
+  // Render
+  loadPixels();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Map screen pixel to grid
+      let gx = floor(map(x, 0, width, 0, rdW));
+      let gy = floor(map(y, 0, height, 0, rdH));
+      let idx = gx + gy * rdW;
+      
+      let c = floor((rdGrid[idx].a - rdGrid[idx].b) * 255);
+      c = constrain(c, 0, 255);
+      
+      let pIdx = (x + y * width) * 4;
+      // Colorize: Black to Cyan/White
+      pixels[pIdx] = c;
+      pixels[pIdx+1] = c;
+      pixels[pIdx+2] = 255;
+      pixels[pIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "105": {
+        "name": "Gameboy Camera",
+        "description": "Strict 4-color palette (Dark Green, Green, Light Green, White) with dithering. (Ref: Nintendo)",
+        "global_vars": "",
+        "draw_loop": """
+  background(15, 56, 15);
+  video.loadPixels();
+  loadPixels();
+  
+  // GB Palette
+  const palette = [
+    [15, 56, 15],   // Darkest
+    [48, 98, 48],   // Dark
+    [139, 172, 15], // Light
+    [155, 188, 15]  // Lightest
+  ];
+  
+  // Bayer Matrix 4x4
+  const bayer = [
+    [0, 8, 2, 10],
+    [12, 4, 14, 6],
+    [3, 11, 1, 9],
+    [15, 7, 13, 5]
+  ];
+  
+  // paramA controls pixelation/downsampling
+  let step = floor(map(paramA, 0, 1, 1, 4));
+  
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      let avg = (r + g + b) / 3;
+      
+      // Map to 0-255 range with dither
+      let mapX = x % 4;
+      let mapY = y % 4;
+      let threshold = (bayer[mapY][mapX] / 16.0) * 255;
+      
+      // Adjust brightness based on threshold
+      let val = avg + (threshold - 128) * 0.5;
+      
+      // Quantize to 4 levels
+      let level = floor(map(val, 0, 255, 0, 4));
+      level = constrain(level, 0, 3);
+      
+      let c = palette[level];
+      
+      // Fill block
+      for(let dy=0; dy<step; dy++) {
+        for(let dx=0; dx<step; dx++) {
+          if(x+dx < width && y+dy < height) {
+             let pIdx = ((x+dx) + (y+dy)*width) * 4;
+             pixels[pIdx] = c[0];
+             pixels[pIdx+1] = c[1];
+             pixels[pIdx+2] = c[2];
+             pixels[pIdx+3] = 255;
+          }
+        }
+      }
+    }
+  }
+  updatePixels();
+"""
+    },
+    "106": {
+        "name": "Vector Display",
+        "description": "Detects edges and draws them as bright, glowing vector lines, ignoring fills. (Ref: Asteroids Arcade)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  
+  stroke(0, 255, 0);
+  strokeWeight(1);
+  noFill();
+  
+  // Glow effect
+  drawingContext.shadowBlur = 10;
+  drawingContext.shadowColor = 'lime';
+  
+  // paramA controls edge threshold
+  let thresh = map(paramA, 0, 1, 20, 80);
+  let step = 2; // Skip pixels for performance/style
+  
+  beginShape(LINES);
+  for (let y = 0; y < height - step; y += step) {
+    for (let x = 0; x < width - step; x += step) {
+      let idx = (x + y * width) * 4;
+      let idxR = ((x+step) + y * width) * 4;
+      let idxD = (x + (y+step) * width) * 4;
+      
+      let b = (video.pixels[idx] + video.pixels[idx+1] + video.pixels[idx+2]) / 3;
+      let bR = (video.pixels[idxR] + video.pixels[idxR+1] + video.pixels[idxR+2]) / 3;
+      let bD = (video.pixels[idxD] + video.pixels[idxD+1] + video.pixels[idxD+2]) / 3;
+      
+      if (abs(b - bR) > thresh) {
+         vertex(x, y); vertex(x, y+step);
+      }
+      if (abs(b - bD) > thresh) {
+         vertex(x, y); vertex(x+step, y);
+      }
+    }
+  }
+  endShape();
+  
+  drawingContext.shadowBlur = 0;
+"""
+    },
+    "107": {
+        "name": "Bad Cable",
+        "description": "Randomly drops the sync signal, causing the image to roll or shear horizontally. (Ref: Analog Glitch)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls glitch intensity
+  let intensity = map(paramA, 0, 1, 0, 50);
+  
+  for (let y = 0; y < height; y++) {
+    // Calculate horizontal shift (H-Sync failure)
+    // Noise based on y and time
+    let xOffset = 0;
+    
+    // Occasional large tears
+    if (random(1) < 0.05 * (intensity/10)) {
+       xOffset = random(-width/2, width/2);
+    } else {
+       // Jitter
+       xOffset = (noise(y * 0.01, frameCount * 0.1) - 0.5) * intensity * 4;
+    }
+    
+    for (let x = 0; x < width; x++) {
+      let sx = floor(x - xOffset);
+      // Wrap
+      sx = (sx + width) % width;
+      
+      let destIdx = (x + y * width) * 4;
+      let srcIdx = (sx + y * width) * 4;
+      
+      // Color channel separation (chromatic aberration on glitch)
+      if (abs(xOffset) > 5) {
+         pixels[destIdx] = video.pixels[((sx + 5) % width + y * width) * 4];
+         pixels[destIdx+1] = video.pixels[srcIdx+1];
+         pixels[destIdx+2] = video.pixels[((sx - 5 + width) % width + y * width) * 4 + 2];
+      } else {
+         pixels[destIdx] = video.pixels[srcIdx];
+         pixels[destIdx+1] = video.pixels[srcIdx+1];
+         pixels[destIdx+2] = video.pixels[srcIdx+2];
+      }
+      pixels[destIdx+3] = 255;
+    }
+  }
+  updatePixels();
+"""
+    },
+    "108": {
+        "name": "Night Vision",
+        "description": "High contrast green monochrome with added film grain and a vignette. (Ref: Military Ops)",
+        "global_vars": "",
+        "draw_loop": """
+  background(0);
+  video.loadPixels();
+  loadPixels();
+  
+  // paramA controls noise amount
+  let noiseAmt = map(paramA, 0, 1, 20, 100);
+  let cx = width/2;
+  let cy = height/2;
+  let maxDist = dist(0,0,cx,cy);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let idx = (x + y * width) * 4;
+      let r = video.pixels[idx];
+      let g = video.pixels[idx+1];
+      let b = video.pixels[idx+2];
+      
+      // Grayscale
+      let bright = (r + g + b) / 3;
+      bright = 255 - bright;
+      
+      // Contrast stretch
+      bright = (bright - 50) * 1.5;
+      bright = constrain(bright, 0, 255);
+      
+      // Vignette
+      let d = dist(x, y, cx, cy);
+      let vig = map(d, 0, maxDist, 1, 0.2);
+      bright *= vig;
+      
+      // Add noise
+      bright += random(-noiseAmt, noiseAmt);
+      bright = constrain(bright, 0, 255);
+      
+      // Night vision green mapping
+      pixels[idx] = 0;
+      pixels[idx+1] = bright;
+      pixels[idx+2] = 0;
+      pixels[idx+3] = 255;
+    }
+  }
+  updatePixels();
+  
+  // Scanlines overlay
+  fill(0, 50);
+  noStroke();
+  for(let y=0; y<height; y+=4) rect(0, y, width, 2);
+"""
     }
 }
