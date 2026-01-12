@@ -21,10 +21,9 @@ This project acts as a template engine. It allows you to select an artistic effe
 
 ### Gallery
 
-| | |
-| ![ASCII Matrix](assets/examples/idx001_ASCII.gif)<br>**ASCII Matrix** | ![Kaleidoscope](assets/examples/idx006_circhalftones.gif)<br>**Circle Halftones** |
-| ![Voronoi](assets/examples/voronoi.gif)<br>**Voronoi Stained Glass** | ![Slit Scan](assets/examples/slitscan.gif)<br>**Slit-Scan** |
-| ![Liquid Displacement](assets/examples/liquid.gif)<br>**Liquid Displacement** | ![Reaction Diffusion](assets/examples/reaction.gif)<br>**Reaction-Diffusion** |
+| <img src="assets/examples/idx001_ASCII.gif" width="250" alt="ASCII Matrix"><br>**ASCII Matrix** | <img src="assets/examples/idx006_circhalftones.gif" width="250" alt="Circle Halftones"><br>**Circle Halftones** |
+| <img src="assets/examples/voronoi.gif" width="250" alt="Voronoi Stained Glass"><br>**Voronoi Stained Glass** | <img src="assets/examples/slitscan.gif" width="250" alt="Slit-Scan"><br>**Slit-Scan** |
+| <img src="assets/examples/liquid.gif" width="250" alt="Liquid Displacement"><br>**Liquid Displacement** | <img src="assets/examples/reaction.gif" width="250" alt="Reaction Diffusion"><br>**Reaction-Diffusion** |
 
 
 ## Available Effects
