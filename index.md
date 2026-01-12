@@ -5,10 +5,9 @@ title: Home
 
 Project by [Shashank Bangalore Lakshman](shashankbl.github.io)
 
-
 ## Description
 
-This project acts as a template engine. It allows you to select an artistic effect from a Python library and outputs a fully functional web directory (HTML + JS) ready to run locally.
+This project acts as a template engine. It allows you to select an artistic effect from a Javascript (p5js) library and outputs a fully functional web directory (HTML + JS) ready to run locally.
 
 ## How to Use
 
