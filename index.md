@@ -3,9 +3,8 @@ layout: default
 title: Home
 ---
 
-# PixelSynth
+Project by [Shashank Bangalore Lakshman](shashankbl.github.io)
 
-A creative coding tool that uses Python to procedurally compile and generate interactive p5.js (JavaScript) sketches for live webcam manipulation.
 
 ## Description
 
