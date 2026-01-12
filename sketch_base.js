@@ -9,7 +9,7 @@ let isPaused = false;
 // [INJECTED GLOBAL VARIABLES END]
 
 function setup() {
-  createCanvas(800, 600);
+  createCanvas(1000, 750);
   pixelDensity(1); // Ensure 1:1 pixel mapping for performance
   
   video = createCapture(VIDEO);
