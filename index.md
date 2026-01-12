@@ -29,6 +29,7 @@ This project acts as a template engine. It allows you to select an artistic effe
 
 
 ## Available Effects
+The latest version of this library contains 108 effects grouped into the following categories:
 
 ### Pixelation & Grid Systems
 1. **ASCII Matrix**: Maps pixel brightness to characters.
