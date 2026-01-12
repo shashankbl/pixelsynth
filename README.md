@@ -2,6 +2,14 @@
 
 A creative coding tool that uses Python to procedurally compile and generate interactive p5.js (JavaScript) sketches for live webcam manipulation.
 
+### Gallery
+
+| | |
+|:---:|:---:|
+| ![ASCII Matrix](assets/examples/ascii.gif)<br>**ASCII Matrix** | ![Kaleidoscope](assets/examples/kaleidoscope.gif)<br>**Kaleidoscope** |
+| ![Voronoi](assets/examples/voronoi.gif)<br>**Voronoi Stained Glass** | ![Slit Scan](assets/examples/slitscan.gif)<br>**Slit-Scan** |
+| ![Liquid Displacement](assets/examples/liquid.gif)<br>**Liquid Displacement** | ![Reaction Diffusion](assets/examples/reaction.gif)<br>**Reaction-Diffusion** |
+
 ## Description
 
 This project acts as a template engine. It allows you to select an artistic effect from a Python library and outputs a fully functional web directory (HTML + JS) ready to run locally.
