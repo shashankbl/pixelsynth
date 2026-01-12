@@ -9,7 +9,7 @@ from effects_library import EFFECTS
 TEMPLATE_DIR = "."
 OUTPUT_DIR = "output"
 SKETCH_TEMPLATE = "sketch_base.js"
-HTML_TEMPLATE = "index.html"
+HTML_TEMPLATE = "template.html"
 PORT = 8000
 
 def load_template(filename):
