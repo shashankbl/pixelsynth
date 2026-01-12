@@ -4,3 +4,8 @@ A creative coding tool that uses Python to procedurally compile and generate int
 
 **Learn more here:**
 [PixelSynth](https://shashankbl.github.io/pixelsynth/)
+
+#### License
+https://opensource.org/license/mit
+
+**NOTE:** Parts of this project were vibe-coded with Google Gemini 3

@@ -267,3 +267,9 @@ The latest version of this library contains 108 effects grouped into the followi
 106\. **Vector Display**: Detects edges and draws them as bright, glowing vector lines, ignoring fills.
 
 108\. **Night Vision**: High contrast green monochrome with added film grain and a vignette.
+
+
+#### License
+https://opensource.org/license/mit
+
+**NOTE:** Parts of this project were vibe-coded with Google Gemini 3
