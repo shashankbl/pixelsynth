@@ -3,7 +3,7 @@ layout: default
 title: Home
 ---
 
-Project by [Shashank Bangalore Lakshman](shashankbl.github.io)
+Project by [Shashank Bangalore Lakshman](https://shashankbl.github.io)
 
 ## Description
 
